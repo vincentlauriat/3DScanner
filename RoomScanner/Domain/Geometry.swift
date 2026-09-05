@@ -111,6 +111,50 @@ enum Polygon2D {
         return inside
     }
 
+    /// Triangulation d'un polygone simple (convexe ou concave, sans trou) par
+    /// découpage d'oreilles. Retourne des triplets d'indices dans `pts`.
+    static func triangulate(_ pts: [Point2D]) -> [(Int, Int, Int)] {
+        guard pts.count >= 3 else { return [] }
+        // Travaille toujours dans le sens trigonométrique.
+        let ccw = signedArea(pts) >= 0
+        var idx = Array(pts.indices)
+        if !ccw { idx.reverse() }
+        var tris: [(Int, Int, Int)] = []
+        var guardCount = 0
+        while idx.count > 3 && guardCount < 10_000 {
+            guardCount += 1
+            var earFound = false
+            for i in idx.indices {
+                let ia = idx[(i + idx.count - 1) % idx.count], ib = idx[i], ic = idx[(i + 1) % idx.count]
+                let a = pts[ia], b = pts[ib], c = pts[ic]
+                // Sommet convexe ?
+                if cross(b - a, c - b) <= 1e-12 { continue }
+                // Aucun autre sommet dans le triangle ?
+                var contains = false
+                for j in idx where j != ia && j != ib && j != ic {
+                    if pointInTriangle(pts[j], a, b, c) { contains = true; break }
+                }
+                if contains { continue }
+                tris.append((ia, ib, ic))
+                idx.remove(at: i)
+                earFound = true
+                break
+            }
+            if !earFound { break }   // polygone dégénéré : on s'arrête proprement
+        }
+        if idx.count == 3 { tris.append((idx[0], idx[1], idx[2])) }
+        return tris
+    }
+
+    private static func cross(_ u: Point2D, _ v: Point2D) -> Double { u.x * v.y - u.y * v.x }
+
+    private static func pointInTriangle(_ p: Point2D, _ a: Point2D, _ b: Point2D, _ c: Point2D) -> Bool {
+        let d1 = cross(b - a, p - a), d2 = cross(c - b, p - b), d3 = cross(a - c, p - c)
+        let hasNeg = d1 < -1e-12 || d2 < -1e-12 || d3 < -1e-12
+        let hasPos = d1 > 1e-12 || d2 > 1e-12 || d3 > 1e-12
+        return !(hasNeg && hasPos)
+    }
+
     static func perimeter(_ pts: [Point2D]) -> Double {
         guard pts.count >= 2 else { return 0 }
         return pts.indices.reduce(0.0) { $0 + pts[$1].distance(to: pts[($1 + 1) % pts.count]) }
