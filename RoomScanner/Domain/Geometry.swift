@@ -173,6 +173,94 @@ enum Polygon2D {
         return (tris, complete)
     }
 
+    /// Découpe `subject` par un polygone **convexe** parcouru dans le sens trigonométrique
+    /// (Sutherland–Hodgman). La convexité du découpeur est la condition de validité de
+    /// l'algorithme : on ne découpe donc jamais que par des triangles issus de `triangulate`,
+    /// jamais par un contour de pièce (concave, et piégeux sur les arêtes colinéaires).
+    static func clip(_ subject: [Point2D], byConvex clipper: [Point2D]) -> [Point2D] {
+        guard subject.count >= 3, clipper.count >= 3 else { return [] }
+        var out = subject
+        for i in clipper.indices {
+            if out.isEmpty { return [] }
+            let a = clipper[i], b = clipper[(i + 1) % clipper.count]
+            let input = out
+            out.removeAll(keepingCapacity: true)
+            var prev = input[input.count - 1]
+            var prevInside = cross(b - a, prev - a) >= -1e-12
+            for point in input {
+                let inside = cross(b - a, point - a) >= -1e-12
+                if inside != prevInside, let x = lineIntersection(prev, point, a, b) { out.append(x) }
+                if inside { out.append(point) }
+                prev = point; prevInside = inside
+            }
+        }
+        return out
+    }
+
+    /// Aire de l'intersection de plusieurs polygones simples (0 si elle est vide).
+    static func intersectionArea(_ polygons: [[Point2D]]) -> Double {
+        intersectionPieces(polygons).reduce(0) { $0 + area($1) }
+    }
+
+    /// Aire de l'**union** de plusieurs polygones simples, par inclusion–exclusion avec
+    /// élagage dès qu'une intersection est vide. Les pièces d'une maison se recouvrent
+    /// légèrement (épaisseur des murs, contours de scan imprécis) : sommer leurs aires
+    /// surestime la surface — mesuré à +2,14 m² sur la première maison réelle.
+    static func unionArea(_ polygons: [[Point2D]]) -> Double {
+        let polys = polygons.filter { $0.count >= 3 }
+        guard !polys.isEmpty else { return 0 }
+        var total = 0.0
+        func walk(from start: Int, pieces: [[Point2D]], sign: Double) {
+            total += sign * pieces.reduce(0) { $0 + area($1) }
+            guard start < polys.count else { return }
+            for j in start..<polys.count {
+                let next = clipPieces(pieces, by: polys[j])
+                if !next.isEmpty { walk(from: j + 1, pieces: next, sign: -sign) }
+            }
+        }
+        for i in polys.indices { walk(from: i + 1, pieces: convexPieces(of: polys[i]), sign: 1) }
+        return total
+    }
+
+    private static func intersectionPieces(_ polygons: [[Point2D]]) -> [[Point2D]] {
+        let polys = polygons.filter { $0.count >= 3 }
+        guard let first = polys.first else { return [] }
+        var pieces = convexPieces(of: first)
+        for poly in polys.dropFirst() {
+            if pieces.isEmpty { return [] }
+            pieces = clipPieces(pieces, by: poly)
+        }
+        return pieces
+    }
+
+    /// Chaque morceau convexe est redécoupé par chaque triangle du polygone.
+    private static func clipPieces(_ pieces: [[Point2D]], by polygon: [Point2D]) -> [[Point2D]] {
+        let tris = convexPieces(of: polygon)
+        guard !tris.isEmpty else { return [] }
+        var out: [[Point2D]] = []
+        for piece in pieces {
+            for t in tris {
+                let c = clip(piece, byConvex: t)
+                if c.count >= 3, area(c) > 1e-12 { out.append(c) }
+            }
+        }
+        return out
+    }
+
+    private static func convexPieces(of polygon: [Point2D]) -> [[Point2D]] {
+        triangulate(polygon).map { [polygon[$0.0], polygon[$0.1], polygon[$0.2]] }
+    }
+
+    /// Intersection du segment `p1p2` avec la **droite** `ab` (les deux sont sécants par
+    /// construction : `p1` et `p2` sont de part et d'autre de `ab`).
+    private static func lineIntersection(_ p1: Point2D, _ p2: Point2D, _ a: Point2D, _ b: Point2D) -> Point2D? {
+        let d1 = p2 - p1, d2 = b - a
+        let den = cross(d1, d2)
+        guard abs(den) > 1e-15 else { return nil }
+        let t = cross(a - p1, d2) / den
+        return Point2D(x: p1.x + d1.x * t, y: p1.y + d1.y * t)
+    }
+
     private static func cross(_ u: Point2D, _ v: Point2D) -> Double { u.x * v.y - u.y * v.x }
 
     private static func pointInTriangle(_ p: Point2D, _ a: Point2D, _ b: Point2D, _ c: Point2D) -> Bool {

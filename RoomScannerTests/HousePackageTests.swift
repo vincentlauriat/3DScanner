@@ -89,6 +89,27 @@ final class HousePackageTests: XCTestCase {
         XCTAssertEqual(store.houseRecords.first?.roomCount, rebuilt.allRooms.count)
     }
 
+    /// Montée de version de schéma : une maison enregistrée avant la v2 phase 5 porte des noms
+    /// automatiques issus de la première section seulement, et une surface qui somme les pièces.
+    /// À la relecture, les deux sont recalculés et le paquet réécrit — c'est ce qui rend le
+    /// correctif visible sur une maison déjà scannée, sans nouveau scan.
+    func testSchemaMigrationRecomputesAutomaticNamesAndArea() throws {
+        var pkg = housePackage()
+        pkg.house.stories[0].rooms[0].name = "Ancien nom automatique"
+        pkg.record = HouseRecord(house: pkg.house, createdAt: pkg.record.createdAt)
+        pkg.record.schemaVersion = 1
+        pkg.record.areaM2 = 999
+        try store.saveHouse(pkg)
+
+        let rebuilt = try store.house(for: pkg.record)
+        XCTAssertNotEqual(rebuilt.stories[0].rooms[0].name, "Ancien nom automatique", "noms automatiques recalculés à la montée de schéma")
+        let record = try XCTUnwrap(store.houseRecords.first { $0.id == pkg.record.id })
+        XCTAssertEqual(record.schemaVersion, FloorPlan.schemaVersion, "le paquet adopte le schéma courant")
+        XCTAssertEqual(record.areaM2, HouseMeasurements(house: rebuilt).floorArea, accuracy: 1e-9)
+        XCTAssertNotEqual(record.areaM2, 999, "la surface stockée est rafraîchie")
+        XCTAssertEqual(try HousePackage.readRecord(from: store.packageURL(for: pkg.record)), record, "meta.json réécrit")
+    }
+
     func testImportDuplicateGetsNewIdentity() throws {
         let pkg = housePackage()
         try store.saveHouse(pkg)

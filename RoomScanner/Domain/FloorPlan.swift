@@ -77,7 +77,9 @@ struct PlacedObject: Codable, Equatable, Identifiable {
 /// Modèle pivot d'une pièce (D3). Mètres, `Double`, pur Swift. Sérialisé dans
 /// `plan.json` pour être lu sans RoomPlan (Mac) ; recalculable depuis `room.json`.
 struct FloorPlan: Codable, Equatable, Identifiable {
-    static let schemaVersion = 1
+    /// 2 : surface de maison = union des pièces (et non leur somme), noms de pièces composés
+    /// depuis toutes les sections RoomPlan. Une maison enregistrée en 1 est renommée à la relecture.
+    static let schemaVersion = 2
     static let defaultWallThickness = 0.10
 
     var id: UUID

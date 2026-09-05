@@ -16,7 +16,7 @@ struct HouseBuilder {
         var names: [String] = []
         var plans: [FloorPlan] = []
         for scan in structure.rooms {
-            let proposed = naming.proposedName(for: scan.sectionLabels.first ?? .unidentified, existingNames: names)
+            let proposed = naming.proposedName(for: scan.sectionLabels, existingNames: names)
             names.append(proposed)
             var plan = planBuilder.build(from: scan, name: proposed)
             plan.story = storyOf[scan.id] ?? scan.story

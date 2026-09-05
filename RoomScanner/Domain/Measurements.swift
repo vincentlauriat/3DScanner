@@ -34,16 +34,18 @@ struct RoomMeasurements: Equatable {
     var windows: [OpeningMeasure] { openings.filter { $0.kind == .window } }
 }
 
-/// Mesures d'une maison : somme des pièces.
+/// Mesures d'une maison. La surface est l'**union** des pièces d'un même niveau, pas leur
+/// somme : deux pièces mitoyennes se recouvrent légèrement (épaisseur des murs, contours de
+/// scan imprécis) et la somme double-compte ce recouvrement. Les niveaux, eux, se superposent
+/// en plan : ils sont additionnés.
 struct HouseMeasurements: Equatable {
     let floorArea: Double
     let roomCount: Int
     let storyCount: Int
 
     init(house: House) {
-        let rooms = house.allRooms
-        floorArea = rooms.reduce(0) { $0 + RoomMeasurements(plan: $1).floorArea }
-        roomCount = rooms.count
+        floorArea = house.stories.reduce(0) { $0 + Polygon2D.unionArea($1.rooms.map(\.floorPolygon)) }
+        roomCount = house.allRooms.count
         storyCount = house.stories.count
     }
 }

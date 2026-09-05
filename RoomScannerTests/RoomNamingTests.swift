@@ -20,6 +20,30 @@ final class RoomNamingTests: XCTestCase {
         XCTAssertEqual(naming.proposedName(for: .unidentified, existingNames: ["Pièce"]), "Pièce 2")
     }
 
+    // MARK: - Noms composés (une capture peut porter plusieurs sections)
+
+    func testCompositeNameJoinsEverySection() {
+        XCTAssertEqual(naming.proposedName(for: [.livingRoom, .bedroom], existingNames: []), "Salon / Chambre")
+    }
+
+    func testUnidentifiedIsDroppedWhenAnotherSectionExists() {
+        XCTAssertEqual(naming.proposedName(for: [.unidentified, .bedroom], existingNames: []), "Chambre")
+        XCTAssertEqual(naming.proposedName(for: [.bedroom, .unidentified], existingNames: []), "Chambre")
+    }
+
+    func testRepeatedSectionsAreDeduplicated() {
+        XCTAssertEqual(naming.proposedName(for: [.bedroom, .bedroom], existingNames: []), "Chambre")
+    }
+
+    func testOnlyUnidentifiedFallsBackOnTheGenericName() {
+        XCTAssertEqual(naming.proposedName(for: [], existingNames: []), "Pièce")
+        XCTAssertEqual(naming.proposedName(for: [.unidentified], existingNames: ["Pièce"]), "Pièce 2")
+    }
+
+    func testCompositeNamesAreNumberedLikeSimpleOnes() {
+        XCTAssertEqual(naming.proposedName(for: [.livingRoom, .bedroom], existingNames: ["Salon / Chambre"]), "Salon / Chambre 2")
+    }
+
     func testEveryLabelHasALocalizationKey() {
         for label in RoomLabel.allCases {
             XCTAssertTrue(label.localizationKey.hasPrefix("room.label."))
