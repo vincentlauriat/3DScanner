@@ -79,7 +79,7 @@ struct PlanSceneBuilder {
         }
         if options.showDimensions {
             let dims = Entity(); dims.name = Names.dimensions
-            for wall in room.walls { dims.addChild(makeDimensionLabel(wall)) }
+            for wall in room.walls { dims.addChild(makeDimensionLabel(wall, room: room)) }
             roomEntity.addChild(dims)
         }
         return roomEntity
@@ -163,22 +163,52 @@ struct PlanSceneBuilder {
         e.name = "object:\(o.category)"
         e.position = SIMD3(Float(o.center.x), Float(o.height / 2), Float(-o.center.y))
         e.orientation = simd_quatf(angle: Float(o.angle), axis: SIMD3(0, 1, 0))
-        let label = makeLabel(ObjectNaming.localizedName(o.category), size: 0.12)
-        label.position = SIMD3(0, Float(o.height / 2) + 0.12, 0)
+        let label = makeLabel(ObjectNaming.localizedName(o.category), size: 0.12, billboard: !options.flattenWalls)
+        if options.flattenWalls {
+            // À plat sur l'objet, lisible depuis le zénith (l'entité parente porte déjà l'angle de l'objet).
+            label.position = SIMD3(0, Float(o.height / 2) + 0.005, 0)
+            label.orientation = Self.flatOrientation(yaw: Self.readable(o.angle) - o.angle)
+        } else {
+            label.position = SIMD3(0, Float(o.height / 2) + 0.12, 0)
+        }
         e.addChild(label)
         return e
     }
 
-    private func makeDimensionLabel(_ wall: Wall) -> Entity {
+    /// Cote d'un mur. En 3D : texte billboard au-dessus du mur. En 2D (murs aplatis) : texte posé
+    /// à plat à l'extérieur du mur, tourné pour se lire de gauche à droite depuis le zénith —
+    /// un billboard vu du dessus dépend du « haut » de la caméra et pouvait apparaître tête en bas.
+    private func makeDimensionLabel(_ wall: Wall, room: FloorPlan) -> Entity {
         let text = MeasurementFormat.centimeters(wall.length, locale: options.locale)
-        let label = makeLabel(text, size: 0.16, color: PlatformColor(red: 0.07, green: 0.42, blue: 0.86, alpha: 1))
+        let color = PlatformColor(red: 0.07, green: 0.42, blue: 0.86, alpha: 1)
         let mid = wall.segment.midpoint
-        label.position = SIMD3(Float(mid.x), Float((options.flattenWalls ? 0.02 : wall.height) + 0.15), Float(-mid.y))
+        guard options.flattenWalls else {
+            let label = makeLabel(text, size: 0.16, color: color)
+            label.position = SIMD3(Float(mid.x), Float(wall.height + 0.15), Float(-mid.y))
+            return label
+        }
+        let side = PlanRenderer.InteriorSide(polygon: room.floorPolygon, fallback: room.bounds.center)
+        let outward = side.inward(of: wall.segment) * -1
+        let pos = mid + outward * PlanRenderer.dimensionOffset
+        let label = makeLabel(text, size: 0.16, color: color, billboard: false)
+        label.position = SIMD3(Float(pos.x), Float(options.flattenedHeight) + 0.005, Float(-pos.y))
+        label.orientation = Self.flatOrientation(yaw: Self.readable(wall.segment.angle))
         return label
     }
 
+    /// Orientation d'un texte couché sur le sol (face vers +y), tourné de `yaw` (angle du plan,
+    /// repère (x, y_plan) = (x, −z), même convention que les murs).
+    static func flatOrientation(yaw: Double) -> simd_quatf {
+        simd_quatf(angle: Float(yaw), axis: SIMD3(0, 1, 0)) * simd_quatf(angle: -.pi / 2, axis: SIMD3(1, 0, 0))
+    }
+
+    /// Angle ramené dans ]-90°, 90°] pour que le texte reste lisible.
+    static func readable(_ a: Double) -> Double {
+        var x = a; while x > .pi / 2 { x -= .pi }; while x <= -.pi / 2 { x += .pi }; return x
+    }
+
     /// Texte 3D centré, extrudé très finement.
-    func makeLabel(_ text: String, size: Float, color: PlatformColor = PlatformColor(white: 0.25, alpha: 1)) -> ModelEntity {
+    func makeLabel(_ text: String, size: Float, color: PlatformColor = PlatformColor(white: 0.25, alpha: 1), billboard: Bool = true) -> ModelEntity {
         let mesh = MeshResource.generateText(text, extrusionDepth: 0.002, font: .systemFont(ofSize: CGFloat(size)),
                                              containerFrame: .zero, alignment: .center, lineBreakMode: .byClipping)
         let e = ModelEntity(mesh: mesh, materials: [UnlitMaterial(color: color)])
@@ -187,7 +217,7 @@ struct PlanSceneBuilder {
         e.position = SIMD3(-bounds.center.x, 0, 0)
         let holder = ModelEntity()
         holder.addChild(e)
-        holder.components.set(BillboardComponent())
+        if billboard { holder.components.set(BillboardComponent()) }
         return holder
     }
 
