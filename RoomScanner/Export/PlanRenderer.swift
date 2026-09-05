@@ -156,6 +156,21 @@ struct PlanRenderer {
         if titleHeight > 0 { drawTitleBlock(house, rooms: rooms, scaleDenominator: scaleDenominator, in: ctx, size: size, height: titleHeight) }
     }
 
+    /// Texture du sol pour le visualiseur : les pièces sont dessinées de sorte que
+    /// `bounds` (m, repère maison) couvre exactement l'image — pas de marge, pas de
+    /// cartouche. `pixelsPerMeter` fixe la résolution.
+    func floorTextureImage(_ house: House, bounds: Rect2D, pixelsPerMeter: Double) -> CGImage? {
+        let w = Int((bounds.width * pixelsPerMeter).rounded()), h = Int((bounds.height * pixelsPerMeter).rounded())
+        guard w > 0, h > 0,
+              let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.setFillColor(CGColor(gray: 1, alpha: 1)); ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        let mapper = Mapper(origin: CGPoint(x: -bounds.minX * pixelsPerMeter, y: -bounds.minY * pixelsPerMeter), ppm: pixelsPerMeter)
+        for room in house.allRooms { drawRoom(room, mapper: mapper, in: ctx) }
+        return ctx.makeImage()
+    }
+
     /// Conversion plan (m) → contexte (pt/px), avec le placement de la pièce dans la maison.
     struct Mapper {
         var origin: CGPoint

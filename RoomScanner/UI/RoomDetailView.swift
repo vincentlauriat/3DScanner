@@ -7,11 +7,20 @@ struct RoomDetailView: View {
     let record: RoomRecord
     @State private var plan: FloorPlan?
     @State private var loadError: String?
-    @State private var tab: Tab = .plan
+    /// `-RoomScannerInitialTab viewer|measures` et `-RoomScannerInitialViewerMode 2d|ar` au lancement (captures, essais).
+    @State private var tab: Tab = {
+        switch UserDefaults.standard.string(forKey: "RoomScannerInitialTab") { case "viewer": .viewer; case "measures": .measures; default: .plan }
+    }()
     @State private var renaming = false
     @State private var newName = ""
+    @State private var viewerState: ViewerState = {
+        let s = ViewerState()
+        switch UserDefaults.standard.string(forKey: "RoomScannerInitialViewerMode") { case "2d": s.mode = .twoD; case "ar": s.mode = .ar; default: break }
+        s.showDimensions = UserDefaults.standard.bool(forKey: "RoomScannerInitialDimensions")
+        return s
+    }()
 
-    enum Tab: Hashable { case plan, measures }
+    enum Tab: Hashable { case plan, viewer, measures }
 
     private var currentRecord: RoomRecord { store.records.first { $0.id == record.id } ?? record }
 
@@ -46,6 +55,7 @@ struct RoomDetailView: View {
         VStack(spacing: 0) {
             Picker("", selection: $tab) {
                 Text("detail.tab.plan").tag(Tab.plan)
+                Text("detail.tab.viewer").tag(Tab.viewer)
                 Text("detail.tab.measures").tag(Tab.measures)
             }
             .pickerStyle(.segmented)
@@ -53,6 +63,11 @@ struct RoomDetailView: View {
             .padding(.vertical, 8)
             switch tab {
             case .plan: Plan2DView(house: House(room: plan))
+            case .viewer:
+                VStack(spacing: 0) {
+                    ViewerView(house: House(room: plan), state: viewerState)
+                    ViewerControls(state: viewerState, usdzURL: RoomPackage.usdzURL(in: store.packageURL(for: currentRecord)))
+                }
             case .measures: MeasuresView(plan: plan)
             }
         }

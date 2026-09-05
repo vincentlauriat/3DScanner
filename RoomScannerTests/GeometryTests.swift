@@ -43,6 +43,16 @@ final class GeometryTests: XCTestCase {
         XCTAssertEqual(s.distance(to: Point2D(x: 6, y: 0)), 2, accuracy: 1e-9, "au-delà de l'extrémité")
     }
 
+    func testTriangulationCoversArea() {
+        for poly in [square, SyntheticRooms.lShapeCorners, SyntheticRooms.lShapeCorners.reversed()] {
+            let tris = Polygon2D.triangulate(poly)
+            XCTAssertEqual(tris.count, poly.count - 2)
+            let area = tris.reduce(0.0) { $0 + Polygon2D.area([poly[$1.0], poly[$1.1], poly[$1.2]]) }
+            XCTAssertEqual(area, Polygon2D.area(poly), accuracy: 1e-9, "les triangles recouvrent exactement le polygone")
+        }
+        XCTAssertTrue(Polygon2D.triangulate([Point2D(x: 0, y: 0), Point2D(x: 1, y: 0)]).isEmpty)
+    }
+
     func testProjectionFlipsZ() {
         let p = Point2D(projecting: SIMD3<Float>(1, 5, 2))
         XCTAssertEqual(p, Point2D(x: 1, y: -2))

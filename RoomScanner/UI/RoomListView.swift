@@ -7,9 +7,10 @@ struct RoomListView: View {
     @Environment(RoomStore.self) private var store
     @State private var showScanner = false
     @State private var selection: RoomRecord?
+    @State private var path: [RoomRecord] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if store.records.isEmpty {
                     emptyState
@@ -40,7 +41,11 @@ struct RoomListView: View {
             }
             #endif
         }
-        .onAppear { store.reload() }
+        .onAppear {
+            store.reload()
+            // `-RoomScannerAutoOpenFirst YES` : ouvre la première pièce (captures d'écran, essais).
+            if UserDefaults.standard.bool(forKey: "RoomScannerAutoOpenFirst"), let first = store.records.first { path = [first] }
+        }
     }
 
     private var scanSupported: Bool {

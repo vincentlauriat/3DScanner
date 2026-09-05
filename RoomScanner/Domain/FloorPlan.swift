@@ -120,6 +120,16 @@ struct House: Codable, Equatable, Identifiable {
     }
 
     var allRooms: [FloorPlan] { stories.flatMap(\.rooms) }
+
+    /// Englobant de toutes les pièces dans le repère maison (placements appliqués).
+    var bounds: Rect2D {
+        var pts: [Point2D] = []
+        for r in allRooms where !r.bounds.isEmpty {
+            let b = r.bounds
+            pts += [Point2D(x: b.minX, y: b.minY), Point2D(x: b.maxX, y: b.minY), Point2D(x: b.maxX, y: b.maxY), Point2D(x: b.minX, y: b.maxY)].map(r.transform.apply)
+        }
+        return Rect2D.bounding(pts)
+    }
 }
 
 struct Story: Codable, Equatable {
