@@ -95,6 +95,22 @@ enum Polygon2D {
 
     static func area(_ pts: [Point2D]) -> Double { abs(signedArea(pts)) }
 
+    /// Test point-dans-polygone (parité des croisements).
+    static func contains(_ pts: [Point2D], _ p: Point2D) -> Bool {
+        guard pts.count >= 3 else { return false }
+        var inside = false
+        var j = pts.count - 1
+        for i in pts.indices {
+            let a = pts[i], b = pts[j]
+            if (a.y > p.y) != (b.y > p.y) {
+                let x = (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x
+                if p.x < x { inside.toggle() }
+            }
+            j = i
+        }
+        return inside
+    }
+
     static func perimeter(_ pts: [Point2D]) -> Double {
         guard pts.count >= 2 else { return 0 }
         return pts.indices.reduce(0.0) { $0 + pts[$1].distance(to: pts[($1 + 1) % pts.count]) }

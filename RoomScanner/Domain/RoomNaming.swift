@@ -31,3 +31,13 @@ extension RoomLabel {
         }
     }
 }
+
+/// Libellés localisés des catégories d'objets RoomPlan (`table`, `sofa`, …) ;
+/// repli sur la catégorie brute capitalisée si aucune traduction n'existe.
+enum ObjectNaming {
+    static func localizedName(_ category: String) -> String {
+        let key = "object.\(category)"
+        let s = String(localized: String.LocalizationValue(key), bundle: .main)
+        return s == key ? category.capitalized : s
+    }
+}
