@@ -48,4 +48,27 @@ final class DXFExporterTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(Double(p[extmaxIndex + 2].1)), 2.05, accuracy: 0.001)
         XCTAssertFalse(p.contains { $0.1.contains(",") && [10, 20, 11, 21, 40, 50, 51].contains($0.0) }, "décimales avec virgule")
     }
+
+    func testCodePageAndAccentsAreCP1252() throws {
+        var plan = FloorPlanBuilder().build(from: SyntheticRooms.rectangularRoom().scan, name: "Salon")
+        plan.objects[0].category = "television"   // « Télévision » en français
+        let exporter = DXFExporter(locale: Locale(identifier: "fr_FR"))
+        let text = exporter.dxf(for: House(room: plan))
+        XCTAssertTrue(text.contains("9\n$DWGCODEPAGE\n3\nANSI_1252\n"))
+        let data = exporter.data(for: House(room: plan))
+        XCTAssertTrue(data.contains(0xE9), "« é » doit être l'octet CP1252 0xE9, pas la séquence UTF-8 C3 A9")
+        XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("Ã©"))
+        XCTAssertEqual(try XCTUnwrap(String(data: data, encoding: .windowsCP1252)), text)
+    }
+
+    func testPolylineHasR12DummyPoint() throws {
+        let p = try pairs(DXFExporter().dxf(for: house))
+        let starts = p.indices.filter { p[$0] == (0, "POLYLINE") }
+        XCTAssertFalse(starts.isEmpty)
+        for i in starts {
+            XCTAssertEqual(p[i + 1].0, 8)
+            XCTAssertEqual(Array(p[(i + 2)...(i + 4)].map(\.0)), [10, 20, 30], "point factice 10/20/30 avant 66/70")
+            XCTAssertEqual(p[i + 5].0, 66)
+        }
+    }
 }

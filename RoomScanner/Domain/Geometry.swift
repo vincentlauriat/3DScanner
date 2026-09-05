@@ -113,8 +113,12 @@ enum Polygon2D {
 
     /// Triangulation d'un polygone simple (convexe ou concave, sans trou) par
     /// découpage d'oreilles. Retourne des triplets d'indices dans `pts`.
-    static func triangulate(_ pts: [Point2D]) -> [(Int, Int, Int)] {
-        guard pts.count >= 3 else { return [] }
+    static func triangulate(_ pts: [Point2D]) -> [(Int, Int, Int)] { triangulation(pts).triangles }
+
+    /// Comme `triangulate`, en signalant si tout le polygone a pu être découpé (`complete`).
+    /// `false` = contour dégénéré (auto-intersection, sommets dupliqués) : le résultat est partiel.
+    static func triangulation(_ pts: [Point2D]) -> (triangles: [(Int, Int, Int)], complete: Bool) {
+        guard pts.count >= 3 else { return ([], false) }
         // Travaille toujours dans le sens trigonométrique.
         let ccw = signedArea(pts) >= 0
         var idx = Array(pts.indices)
@@ -142,8 +146,14 @@ enum Polygon2D {
             }
             if !earFound { break }   // polygone dégénéré : on s'arrête proprement
         }
-        if idx.count == 3 { tris.append((idx[0], idx[1], idx[2])) }
-        return tris
+        var complete = idx.count == 3
+        if idx.count == 3 {
+            // Dernier triplet : ignoré s'il est plat (sommets alignés), sinon il produirait une normale NaN.
+            let a = pts[idx[0]], b = pts[idx[1]], c = pts[idx[2]]
+            if abs(cross(b - a, c - a)) > 1e-12 { tris.append((idx[0], idx[1], idx[2])) }
+            else if tris.isEmpty { complete = false }
+        }
+        return (tris, complete)
     }
 
     private static func cross(_ u: Point2D, _ v: Point2D) -> Double { u.x * v.y - u.y * v.x }

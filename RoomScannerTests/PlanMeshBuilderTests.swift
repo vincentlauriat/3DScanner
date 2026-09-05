@@ -68,4 +68,22 @@ final class PlanMeshBuilderTests: XCTestCase {
     func testEmptyHouse() {
         XCTAssertTrue(PlanMeshBuilder().build(House(name: "Vide", stories: [])).isEmpty)
     }
+
+    func testNoNaNNormalsWithAlignedFloorVertices() {
+        var p = plan
+        p.floorPolygon = [Point2D(x: -2, y: -1.5), Point2D(x: 0, y: -1.5), Point2D(x: 2, y: -1.5), Point2D(x: 2, y: 1.5), Point2D(x: -2, y: 1.5)]
+        let mesh = PlanMeshBuilder().build(House(room: p))
+        XCTAssertFalse(mesh.normals.contains { $0.x.isNaN || $0.y.isNaN || $0.z.isNaN })
+        XCTAssertFalse(mesh.positions.contains { $0.x.isNaN || $0.y.isNaN || $0.z.isNaN })
+        let obj = String(decoding: MeshWriters.obj(mesh, name: "x"), as: UTF8.self)
+        XCTAssertFalse(obj.lowercased().contains("nan"))
+    }
+
+    func testDegenerateFloorFallsBackToClosedRectangle() {
+        var p = plan
+        p.floorPolygon = [Point2D(x: 0, y: 0), Point2D(x: 1, y: 0), Point2D(x: 2, y: 0)]   // contour plat
+        var mesh = TriangleMesh()
+        PlanMeshBuilder.addFloor(p, transform: .identity, thickness: 0.05, to: &mesh)
+        XCTAssertEqual(mesh.triangles.count, 2 * 2 + 4 * 2, "dalle rectangulaire fermée de repli")
+    }
 }

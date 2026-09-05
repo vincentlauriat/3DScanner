@@ -39,4 +39,12 @@ final class MeasurementsTests: XCTestCase {
         XCTAssertEqual(MeasurementFormat.centimeters(1.2, locale: en), "120 cm")
         XCTAssertEqual(MeasurementFormat.squareMeters(29.94, locale: en), "29.9 m²")
     }
+
+    func testBoundsIncludeObjectCorners() {
+        var plan = FloorPlanBuilder().build(from: SyntheticRooms.rectangularRoom().scan, name: "Salon")
+        // Table 1.2 × 0.8 placée à cheval sur le mur est (x = 2) : ses coins dépassent l'englobant des murs.
+        plan.objects[0].center = Point2D(x: 2.0, y: 0); plan.objects[0].angle = 0
+        XCTAssertEqual(plan.bounds.maxX, 2.6, accuracy: 1e-4)
+        XCTAssertEqual(plan.bounds.minX, -2.0, accuracy: 1e-4)
+    }
 }

@@ -67,13 +67,17 @@ final class CloudStorageTests: XCTestCase {
         XCTAssertEqual(try RoomPackage.readRecord(from: copyURL), copy)
         XCTAssertEqual(try RoomPackage.readPlan(from: copyURL).id, copy.id)
         XCTAssertEqual(try RoomPackage.readRecord(from: url).name, "Salon", "l'original est intact")
+        // Destination explicite (import sandboxé : jamais dans le dossier d'origine).
+        let elsewhere = tmp.appendingPathComponent("elsewhere", isDirectory: true)
+        let copy2 = try ConflictResolver.duplicateAsConflictCopy(packageAt: url, suffix: "(importé)", into: elsewhere)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: elsewhere.appendingPathComponent("\(copy2.id.uuidString).roomscan/meta.json").path))
     }
 
     func testResolveWithoutConflictsIsNil() throws {
         let pkg = package(named: "Salon")
         let url = tmp.appendingPathComponent("\(pkg.record.id.uuidString).roomscan")
         try pkg.write(to: url)
-        XCTAssertNil(try ConflictResolver.resolve(packageAt: url, suffix: "(conflit)"))
+        XCTAssertEqual(try ConflictResolver.resolve(packageAt: url, suffix: "(conflit)"), [])
     }
 
     @MainActor

@@ -57,4 +57,20 @@ final class GeometryTests: XCTestCase {
         let p = Point2D(projecting: SIMD3<Float>(1, 5, 2))
         XCTAssertEqual(p, Point2D(x: 1, y: -2))
     }
+
+    func testTriangulationSkipsFlatLastTripletAndReportsDegenerateContours() {
+        // Rectangle avec un sommet aligné sur un côté : le dernier triplet peut être plat.
+        let pts = [Point2D(x: 0, y: 0), Point2D(x: 2, y: 0), Point2D(x: 4, y: 0), Point2D(x: 4, y: 3), Point2D(x: 0, y: 3)]
+        let (tris, complete) = Polygon2D.triangulation(pts)
+        XCTAssertTrue(complete)
+        for t in tris {
+            let a = pts[t.0], b = pts[t.1], c = pts[t.2]
+            XCTAssertGreaterThan(abs(Polygon2D.signedArea([a, b, c])), 1e-9, "aucun triangle plat")
+        }
+        XCTAssertEqual(tris.reduce(0.0) { $0 + abs(Polygon2D.signedArea([pts[$1.0], pts[$1.1], pts[$1.2]])) }, 12, accuracy: 1e-9)
+        // Contour dégénéré (tous alignés) : incomplet, sans triangle.
+        let flat = [Point2D(x: 0, y: 0), Point2D(x: 1, y: 0), Point2D(x: 2, y: 0), Point2D(x: 3, y: 0)]
+        let r = Polygon2D.triangulation(flat)
+        XCTAssertFalse(r.complete); XCTAssertTrue(r.triangles.isEmpty)
+    }
 }

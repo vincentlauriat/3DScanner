@@ -85,7 +85,12 @@ struct DXFExporter {
         return out
     }
 
-    func data(for house: House) -> Data { Data(dxf(for: house).utf8) }
+    /// Octets du fichier : R12 ne connaît pas l'Unicode ; on déclare `$DWGCODEPAGE` ANSI_1252 et
+    /// on encode réellement en CP1252 (accents français conservés, caractères hors table remplacés).
+    func data(for house: House) -> Data {
+        let text = dxf(for: house)
+        return text.data(using: .windowsCP1252, allowLossyConversion: true) ?? Data(text.utf8)
+    }
 
     // MARK: sections
 
@@ -94,6 +99,7 @@ struct DXFExporter {
         0\nSECTION\n2\nHEADER
         9\n$ACADVER\n1\nAC1009
         9\n$INSUNITS\n70\n6
+        9\n$DWGCODEPAGE\n3\nANSI_1252
         9\n$EXTMIN\n10\n\(fmt(b.minX))\n20\n\(fmt(b.minY))\n30\n0
         9\n$EXTMAX\n10\n\(fmt(b.maxX))\n20\n\(fmt(b.maxY))\n30\n0
         0\nENDSEC\n
@@ -119,7 +125,8 @@ struct DXFExporter {
         }
         mutating func polyline(_ pts: [Point2D], layer: Layer) {
             guard pts.count >= 2 else { return }
-            body += "0\nPOLYLINE\n8\n\(layer.rawValue)\n66\n1\n70\n1\n"
+            // R12 exige un point factice (10/20/30 à zéro) sur l'entité POLYLINE avant les VERTEX.
+            body += "0\nPOLYLINE\n8\n\(layer.rawValue)\n10\n0.0\n20\n0.0\n30\n0.0\n66\n1\n70\n1\n"
             for p in pts { body += "0\nVERTEX\n8\n\(layer.rawValue)\n10\n\(fmt(p.x))\n20\n\(fmt(p.y))\n30\n0\n" }
             body += "0\nSEQEND\n8\n\(layer.rawValue)\n"
         }
@@ -130,7 +137,9 @@ struct DXFExporter {
             let (s, e) = d >= 0 ? (a1, a2) : (a2, a1)
             body += "0\nARC\n8\n\(layer.rawValue)\n10\n\(fmt(c.x))\n20\n\(fmt(c.y))\n30\n0\n40\n\(fmt(r))\n50\n\(fmt(deg(s)))\n51\n\(fmt(deg(e)))\n"
         }
-        mutating func text(_ str: String, at p: Point2D, angle: Double, height: Double, layer: Layer) {
+        mutating func text(_ raw: String, at p: Point2D, angle: Double, height: Double, layer: Layer) {
+            // Espaces fines / insécables (séparateurs de milliers fr) → espace simple, absentes de CP1252.
+            let str = raw.replacingOccurrences(of: "\u{202F}", with: " ").replacingOccurrences(of: "\u{00A0}", with: " ")
             // 72=1 : centré horizontalement sur le second point (11/21) ; 73=2 : centré verticalement.
             body += "0\nTEXT\n8\n\(layer.rawValue)\n10\n\(fmt(p.x))\n20\n\(fmt(p.y))\n30\n0\n40\n\(fmt(height))\n1\n\(str)\n50\n\(fmt(deg(angle)))\n72\n1\n11\n\(fmt(p.x))\n21\n\(fmt(p.y))\n31\n0\n73\n2\n"
         }

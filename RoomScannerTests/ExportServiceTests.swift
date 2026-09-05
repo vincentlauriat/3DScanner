@@ -18,6 +18,20 @@ final class ExportServiceTests: XCTestCase {
     func testFileNameIsSanitized() {
         XCTAssertEqual(ExportService.fileName(for: record, format: .pdf), "Salon - Séjour- test.pdf")
         XCTAssertEqual(ExportService.fileName(for: record, format: .usdzMesh), "Salon - Séjour- test-mesh.usdz")
+        for bad in ["..", ".", "...", "", "  "] {
+            var r = record!; r.name = bad
+            XCTAssertEqual(ExportService.folderName(for: r), "room", "« \(bad) » ne doit pas remonter dans l'arborescence")
+        }
+    }
+
+    func testScratchDirectoriesAreUniqueAndPurgedByAge() throws {
+        let a = try ExportService.scratchDirectory(), b = try ExportService.scratchDirectory()
+        XCTAssertNotEqual(a, b)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: a.path), "un second export n'efface pas le premier")
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-7200)], ofItemAtPath: a.path)
+        _ = try ExportService.scratchDirectory()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: a.path), "purgé après une heure")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: b.path))
     }
 
     func testGeneratedFormatsAreWritten() throws {
