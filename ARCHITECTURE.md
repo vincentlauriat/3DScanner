@@ -33,7 +33,7 @@ UI SwiftUI ─▶ RoomCaptureView (Apple RoomPlan) ─▶ CapturedRoom
 | Scan (iOS seulement) | `RoomScanner/Scan` | Enveloppe `RoomCaptureView`, **possède l'`ARSession` injectable** (repère partagé pour le multi-pièces v2), delegate → `CapturedRoom`, traduction des erreurs | RoomPlan, ARKit |
 | Domain | `RoomScanner/Domain` | `ScanInput` (instantané neutre), types pivots `FloorPlan` / `House` / `Story`, `FloorPlanBuilder` (ScanInput → projection 2D), `Measurements`, `RoomNaming` | Foundation, simd uniquement |
 | Viewer | `RoomScanner/Viewer` | `PlanSceneBuilder` (House → entités RealityKit), `ViewerView` (`RealityView` SwiftUI, commune iOS/macOS), `ViewerMode` (caméra 3D / 2D zénith), `ARPlacementController` (iOS : `SpatialTrackingSession`, ancres de plan, 1:20 / 1:50 / 1:1), `ViewerControls` | Domain, RealityKit, Export (texture sol via `PlanRenderer`) |
-| Export | `RoomScanner/Export` | Un exporteur par format, `PlanRenderer` partagé, orchestration `ExportService` | Domain, Core Graphics, Model I/O, RoomPlan (USDZ) |
+| Export | `RoomScanner/Export` | `ExportFormat` (groupes, `UTType`), `ExportService` (dossier temporaire, noms de fichiers assainis, `availableFormats`), `PlanRenderer` (PDF/PNG/vignette/texture sol), `SVGExporter`, `DXFExporter` ; USDZ copié du paquet ; OBJ/STL/PLY via Model I/O (phase 6) | Domain, Core Graphics, Model I/O, RoomPlan (USDZ) |
 | Storage | `RoomScanner/Storage` | CRUD des paquets `.roomscan` (`RoomStore`), `RoomPackage` (UTType), `StorageLocation` (racine iCloud ou locale), métadonnées `RoomRecord`, vignettes | Domain, Export (vignette), Foundation |
 | Sync | `RoomScanner/Sync` | `UbiquityMonitor` (liste live `NSMetadataQuery`, téléchargement à la demande, état par pièce), `CloudAvailability` (bascule iCloud ↔ local, migration), `ConflictResolver` (`NSFileVersion`) | Storage, Foundation |
 | MacUI | `RoomScanner/MacUI` (cible macOS uniquement) | `MacRootView` (split view), `MacMenuCommands` (⌘E exporter, ⌘P imprimer, Révéler dans le Finder), `PrintController`, `DragExportProvider` (`NSItemProvider`), `OpenWithMenu` (`NSWorkspace`), `MacEmptyStateView` | UI, Export, AppKit |
@@ -72,14 +72,14 @@ Tout ce qui est sous l'UI est testable sur simulateur à partir de fixtures JSON
 
 | Format | Implémentation | Unités |
 |---|---|---|
-| PDF | `CGContext` PDF (Core Graphics / Core Text), A4 paysage, échelle standard (1:20/25/50/100), cartouche ; sert aussi à l'impression Mac | pt |
+| PDF | `PlanRenderer.pdfData` — `CGContext` PDF (Core Graphics / Core Text), A4 paysage, échelle standard (1:20/25/50/100), cartouche ; sert aussi à l'impression Mac | pt |
 | Texture sol | `PlanRenderer` mode « texture » (sans cartouche), consommé par `PlanSceneBuilder` | px |
-| PNG | `CGContext` bitmap @3× + `CGImageDestination` | px |
-| SVG | écrivain texte, `viewBox` en mm, `<g id>` par calque | mm |
-| DXF | R12 ASCII : `HEADER` (`$INSUNITS`=6), `TABLES/LAYER`, `ENTITIES` (`LINE`, `ARC`, `TEXT`, `POLYLINE` fermée) | m |
+| PNG | `PlanRenderer.pngData` — `CGContext` bitmap @3× + `CGImageDestination` | px |
+| SVG | `SVGExporter`, écrivain texte, `viewBox` en mm (y inversé), `<g id>` floors/objects/walls/doors/windows/openings/dimensions/text, flèches `marker`, arc de porte `<path>` | mm |
+| DXF | `DXFExporter` R12 ASCII : `HEADER` (`$ACADVER` AC1009, `$INSUNITS`=6, `$EXTMIN/MAX`), `TABLES` LTYPE/LAYER (WALLS, DOORS, WINDOWS, OPENINGS, FLOOR, OBJECTS, DIMENSIONS, TEXT)/STYLE, `ENTITIES` (murs et objets en `POLYLINE` fermées, `ARC` de porte, cotes `LINE` + ticks + `TEXT` centré) | m |
 | USDZ | `CapturedRoom.export(to:exportOptions:)` `.parametric` / `.mesh` | m |
 | OBJ/STL/PLY | `MDLAsset(url: usdz).export(to:)` hors main thread | m |
-| JSON | `JSONEncoder(CapturedRoom)` | — |
+| JSON | contenu de `plan.json` (`FloorPlan`, `RoomPackage.encoder`) — lisible sur les deux plateformes, contrairement au `room.json` Apple | m |
 | ZIP | tout ce qui précède + README.txt | — |
 
 ## Organisation du stockage et synchronisation iCloud (D6, D16, D17)
