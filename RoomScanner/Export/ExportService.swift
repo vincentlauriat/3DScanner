@@ -50,19 +50,30 @@ struct ExportService {
         folderName(for: record) + format.fileSuffix + "." + format.fileExtension
     }
 
-    /// Nom du sous-dossier `Exports/<Pièce>/` (même assainissement).
+    /// Nom du sous-dossier `Exports/<Pièce>/` (même assainissement). Un nom réduit à des points
+    /// (`.`, `..`) ou vide devient `room` : il remonterait sinon dans l'arborescence.
     static func folderName(for record: RoomRecord) -> String {
         var base = record.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let forbidden = CharacterSet(charactersIn: "/\\:*?\"<>|\n\r\t")
         base = String(base.unicodeScalars.map { forbidden.contains($0) ? "-" : Character($0) })
-        return base.isEmpty ? "room" : base
+        if base.isEmpty || base.allSatisfy({ $0 == "." }) { return "room" }
+        return base
     }
 
-    /// Répertoire temporaire propre au processus, vidé à chaque appel pour ne pas accumuler.
+    static let scratchRoot = FileManager.default.temporaryDirectory.appendingPathComponent("RoomScannerExports", isDirectory: true)
+
+    /// Sous-dossier temporaire **unique** par export : plusieurs exports peuvent être en cours
+    /// (feuille d'export, glisser-déposer) sans s'effacer mutuellement. Les sous-dossiers de
+    /// plus d'une heure sont purgés au passage.
     static func scratchDirectory() throws -> URL {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("RoomScannerExports", isDirectory: true)
-        try? FileManager.default.removeItem(at: url)
-        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        let fm = FileManager.default
+        try fm.createDirectory(at: scratchRoot, withIntermediateDirectories: true)
+        let cutoff = Date().addingTimeInterval(-3600)
+        for old in (try? fm.contentsOfDirectory(at: scratchRoot, includingPropertiesForKeys: [.contentModificationDateKey])) ?? [] {
+            if let d = (try? old.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate, d < cutoff { try? fm.removeItem(at: old) }
+        }
+        let url = scratchRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
 

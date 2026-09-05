@@ -85,7 +85,14 @@ codesign_ts "$SPARKLE_VER/XPCServices/Installer.xpc"
 codesign_ts "$SPARKLE_VER/Updater.app"
 codesign_ts "$SPARKLE_FW"
 echo "→ Signature de l'app (Developer ID, Hardened Runtime, entitlements iCloud Production)"
-codesign_ts "$STAGING" --entitlements "$ENTITLEMENTS"
+# codesign ne développe pas $(PRODUCT_BUNDLE_IDENTIFIER) (Xcode le fait au build) : on substitue
+# la valeur dans une copie temporaire, sinon l'exception mach-lookup Sparkle serait littérale.
+BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Contents/Info.plist")
+RESOLVED_ENTITLEMENTS="$STAGING_DIR/entitlements.plist"
+sed "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/$BUNDLE_ID/g" "$ENTITLEMENTS" > "$RESOLVED_ENTITLEMENTS"
+grep -q '\$(' "$RESOLVED_ENTITLEMENTS" && { echo "✗ variable non substituée dans les entitlements" >&2; exit 1; }
+codesign_ts "$STAGING" --entitlements "$RESOLVED_ENTITLEMENTS"
+codesign -d --entitlements - "$STAGING" 2>/dev/null | grep -q "$BUNDLE_ID-spks" || { echo "✗ exception mach-lookup Sparkle absente de la signature" >&2; exit 1; }
 codesign --verify --strict --deep "$STAGING"
 
 # 4. DMG avec mise en page Finder
@@ -127,16 +134,18 @@ hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -ov -o "$DMG" >/de
 rm -rf "$STAGING_DIR"
 
 # 5. Notarisation + agrafage
+NOTARIZED=0
 if [ "${SKIP_NOTARIZE:-0}" = "1" ]; then
-  echo "⚠︎ SKIP_NOTARIZE=1 : DMG non notarisé (essai local uniquement)."
+  echo "⚠︎ SKIP_NOTARIZE=1 : DMG non notarisé (essai local uniquement) — appcast.xml NE sera PAS écrit."
 else
+  NOTARIZED=1
   echo "→ Notarisation (2–5 min)"
   xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
   xcrun stapler staple "$DMG"; xcrun stapler validate "$DMG"
 fi
 
 # 6. Signature Sparkle + appcast.xml
-SPARKLE_BIN="$(ls -d "$HOME"/Library/Developer/Xcode/DerivedData/RoomScanner-*/SourcePackages/artifacts/sparkle/Sparkle/bin 2>/dev/null | head -1)"
+SPARKLE_BIN="$(ls -d "$HOME"/Library/Developer/Xcode/DerivedData/RoomScanner-*/SourcePackages/artifacts/sparkle/Sparkle/bin 2>/dev/null | head -1 || true)"
 if [ -z "$SPARKLE_BIN" ] || [ ! -x "$SPARKLE_BIN/sign_update" ]; then
   SPARKLE_VERSION="2.9.1"; SPARKLE_BIN="$ROOT/.sparkle-tools/bin"
   if [ ! -x "$SPARKLE_BIN/sign_update" ]; then
@@ -155,6 +164,12 @@ if ! SIG_LINE=$("$SPARKLE_BIN/sign_update" --account "$SPARKLE_ACCOUNT" "$DMG" 2
 fi
 BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP/Contents/Info.plist")
 PUB_DATE=$(date -R)
+if [ "$NOTARIZED" != "1" ]; then
+  echo ""
+  echo "✅ Essai local : $DMG ($(ls -lh "$DMG" | awk '{print $5}')), signature Sparkle : $SIG_LINE"
+  echo "   (pas d'appcast : un appcast pointant vers une release inexistante casserait l'auto-update)"
+  exit 0
+fi
 cat > "$ROOT/appcast.xml" <<APPCAST
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">

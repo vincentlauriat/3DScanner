@@ -20,6 +20,9 @@ final class RoomStore {
     let allowsCloud: Bool
 
     @ObservationIgnored private var monitor: UbiquityMonitor?
+    /// Paquets dont la résolution de conflit a échoué : on ne retente pas à chaque lot du moniteur.
+    @ObservationIgnored private var failedConflictResolutions: Set<URL> = []
+    @ObservationIgnored private var isResolvingConflicts = false
 
     init(location: StorageLocation, allowsCloud: Bool = true) {
         self.location = location
@@ -72,13 +75,35 @@ final class RoomStore {
         var status: [UUID: CloudItemStatus] = [:]
         for item in items {
             if let id = UUID(uuidString: item.url.deletingPathExtension().lastPathComponent) { status[id] = item }
-            if item.hasUnresolvedConflicts, item.isAvailableLocally {
-                _ = try? ConflictResolver.resolve(packageAt: item.url, suffix: String(localized: "cloud.conflictSuffix"))
-            }
         }
         cloudStatus = status
         pendingDownloads = items.filter { !$0.isAvailableLocally }.count
         reload()
+        let conflicts = items.filter { $0.hasUnresolvedConflicts && $0.isAvailableLocally && !failedConflictResolutions.contains($0.url) }.map(\.url)
+        if !conflicts.isEmpty { resolveConflicts(at: conflicts) }
+    }
+
+    /// Résout les conflits hors du main thread (copies de paquets entiers), une série à la fois.
+    private func resolveConflicts(at urls: [URL]) {
+        guard !isResolvingConflicts else { return }
+        isResolvingConflicts = true
+        let suffix = String(localized: "cloud.conflictSuffix")
+        Task { [weak self] in
+            let failures = await Task.detached(priority: .utility) { () -> [(URL, Error)] in
+                var failed: [(URL, Error)] = []
+                for url in urls {
+                    do { try ConflictResolver.resolve(packageAt: url, suffix: suffix) } catch { failed.append((url, error)) }
+                }
+                return failed
+            }.value
+            guard let self else { return }
+            self.isResolvingConflicts = false
+            for (url, error) in failures {
+                self.failedConflictResolutions.insert(url)
+                self.lastError = .storageFailed(error.localizedDescription)
+            }
+            self.reload()
+        }
     }
 
     // MARK: Import / export
@@ -93,9 +118,15 @@ final class RoomStore {
         var record = try RoomPackage.readRecord(from: url)
         let dest = location.packageURL(for: record.id)
         if FileManager.default.fileExists(atPath: dest.path) {
-            let copy = try ConflictResolver.duplicateAsConflictCopy(packageAt: url, suffix: String(localized: "cloud.importedSuffix"))
-            let tmpCopy = url.deletingLastPathComponent().appendingPathComponent(copy.id.uuidString).appendingPathExtension(FileLayout.packageExtension)
-            try FileManager.default.moveItem(at: tmpCopy, to: location.packageURL(for: copy.id))
+            // La copie est écrite dans le dossier temporaire de l'app (le dossier d'origine n'est
+            // pas accessible en sandbox), puis déplacée dans `Rooms/`.
+            let staging = FileManager.default.temporaryDirectory.appendingPathComponent("import-\(UUID().uuidString)", isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: staging) }
+            let copy = try ConflictResolver.duplicateAsConflictCopy(packageAt: url, suffix: String(localized: "cloud.importedSuffix"), into: staging)
+            let tmpCopy = staging.appendingPathComponent(copy.id.uuidString).appendingPathExtension(FileLayout.packageExtension)
+            try RoomPackage.coordinatedWrite(at: location.packageURL(for: copy.id), options: .forReplacing) { target in
+                try FileManager.default.moveItem(at: tmpCopy, to: target)
+            }
             record = copy
         } else {
             try RoomPackage.coordinatedWrite(at: dest, options: .forReplacing) { target in

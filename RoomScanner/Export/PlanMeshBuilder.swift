@@ -20,7 +20,9 @@ struct TriangleMesh: Equatable {
 
     /// Ajoute un quadrilatère plan (4 sommets dans l'ordre, normale extérieure = sens trigonométrique vu de dehors).
     mutating func addQuad(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ c: SIMD3<Float>, _ d: SIMD3<Float>) {
-        let n = simd_normalize(simd_cross(b - a, c - a))
+        let cross = simd_cross(b - a, c - a)
+        guard simd_length(cross) > 1e-9 else { return }   // face plate : pas de normale possible
+        let n = simd_normalize(cross)
         let base = UInt32(positions.count)
         positions += [a, b, c, d]; normals += [n, n, n, n]
         triangles += [SIMD3(base, base + 1, base + 2), SIMD3(base, base + 2, base + 3)]
@@ -28,7 +30,9 @@ struct TriangleMesh: Equatable {
 
     /// Ajoute un triangle avec sa normale.
     mutating func addTriangle(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ c: SIMD3<Float>) {
-        let n = simd_normalize(simd_cross(b - a, c - a))
+        let cross = simd_cross(b - a, c - a)
+        guard simd_length(cross) > 1e-9 else { return }
+        let n = simd_normalize(cross)
         let base = UInt32(positions.count)
         positions += [a, b, c]; normals += [n, n, n]
         triangles.append(SIMD3(base, base + 1, base + 2))
@@ -106,16 +110,20 @@ struct PlanMeshBuilder {
 
     /// Dalle : polygone du sol (ou rectangle englobant) triangulé dessus/dessous + flancs.
     static func addFloor(_ room: FloorPlan, transform t: Transform2D, thickness: Double, to mesh: inout TriangleMesh) {
-        var poly = room.floorPolygon
-        if poly.count < 3 {
-            let b = room.bounds
-            guard !b.isEmpty else { return }
-            poly = [Point2D(x: b.minX, y: b.minY), Point2D(x: b.maxX, y: b.minY), Point2D(x: b.maxX, y: b.maxY), Point2D(x: b.minX, y: b.maxY)]
-        }
+        let b = room.bounds
+        guard !b.isEmpty else { return }
+        let rectangle = [Point2D(x: b.minX, y: b.minY), Point2D(x: b.maxX, y: b.minY), Point2D(x: b.maxX, y: b.maxY), Point2D(x: b.minX, y: b.maxY)]
+        var poly = room.floorPolygon.count >= 3 ? room.floorPolygon : rectangle
         // Orientation trigonométrique pour que les normales pointent dehors.
         if Polygon2D.signedArea(poly) < 0 { poly.reverse() }
-        let pts = poly.map(t.apply)
-        let tris = Polygon2D.triangulate(pts)
+        var pts = poly.map(t.apply)
+        var (tris, complete) = Polygon2D.triangulation(pts)
+        if !complete {
+            // Contour dégénéré : une dalle partielle avec tous ses flancs serait non fermée (rejetée à
+            // l'impression 3D). Repli sur le rectangle englobant, toujours triangulable.
+            pts = rectangle.map(t.apply)
+            (tris, _) = Polygon2D.triangulation(pts)
+        }
         for tri in tris {
             let (a, b, c) = (pts[tri.0], pts[tri.1], pts[tri.2])
             mesh.addTriangle(point(a, y: 0), point(b, y: 0), point(c, y: 0))                                    // dessus : normale +y

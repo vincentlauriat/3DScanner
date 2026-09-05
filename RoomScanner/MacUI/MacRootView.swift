@@ -58,6 +58,9 @@ struct MacRootView: View {
             if let s = appState.selected, !store.records.contains(where: { $0.id == s.id }) { appState.selected = nil }
             else if let s = appState.selected, let fresh = store.records.first(where: { $0.id == s.id }), fresh != s { appState.selected = fresh }
         }
+        .onChange(of: appState.selected, initial: true) { _, record in
+            appState.availableFormats = record.map { ExportService.availableFormats(packageURL: store.packageURL(for: $0)) } ?? []
+        }
         .onChange(of: appState.pendingAction) { _, action in
             guard let action else { return }
             appState.pendingAction = nil

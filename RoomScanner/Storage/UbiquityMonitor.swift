@@ -75,6 +75,12 @@ final class UbiquityMonitor {
         observers.removeAll()
     }
 
+    deinit {
+        // Le store peut être libéré sans `stop()` (fenêtre fermée) : la requête ne doit pas survivre.
+        query.stop()
+        observers.forEach(NotificationCenter.default.removeObserver)
+    }
+
     private func refresh() {
         query.disableUpdates()
         defer { query.enableUpdates() }

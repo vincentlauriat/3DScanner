@@ -39,5 +39,14 @@ final class MacUITests: XCTestCase {
         state.selected = RoomRecord(plan: plan)
         XCTAssertTrue(state.hasSelection)
     }
+
+    @MainActor
+    func testExportMenuFormatsFollowSelection() {
+        let state = MacAppState()
+        XCTAssertTrue(state.availableFormats.isEmpty, "pas de sélection → sous-menu vide")
+        state.availableFormats = ExportService.availableFormats(packageURL: nil)
+        XCTAssertFalse(state.availableFormats.contains(.usdzMesh), "pas de maillage de scan → pas proposé")
+        XCTAssertTrue(state.availableFormats.contains(.zip))
+    }
 }
 #endif

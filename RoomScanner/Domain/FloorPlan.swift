@@ -96,7 +96,10 @@ struct FloorPlan: Codable, Equatable, Identifiable {
     var bounds: Rect2D {
         var pts = walls.flatMap { [$0.start, $0.end] } + floorPolygon
         pts += openings.flatMap { [$0.segment.start, $0.segment.end] }
-        pts += objects.map(\.center)
+        for o in objects {
+            let c = cos(o.angle), s = sin(o.angle), hw = o.size.width / 2, hd = o.size.depth / 2
+            pts += [(-hw, -hd), (hw, -hd), (hw, hd), (-hw, hd)].map { (x, y) in Point2D(x: o.center.x + x * c - y * s, y: o.center.y + x * s + y * c) }
+        }
         return Rect2D.bounding(pts)
     }
 

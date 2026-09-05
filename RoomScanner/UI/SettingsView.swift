@@ -54,7 +54,7 @@ struct SettingsView: View {
                 Button("mac.menu.checkForUpdates") { updater.checkForUpdates() }.disabled(!updater.canCheckForUpdates)
                 if !updater.isConfigured { Text("settings.updates.devBuild").font(.footnote).foregroundStyle(.secondary) }
             }
-            .onAppear { if updater.isConfigured { autoCheck = updater.automaticallyChecksForUpdates } }
+            .onAppear { updater.refresh(); if updater.isConfigured { autoCheck = updater.automaticallyChecksForUpdates } }
             #endif
 
             Section("settings.about.header") {

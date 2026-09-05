@@ -23,7 +23,7 @@ struct MacMenuCommands: Commands {
             Menu("mac.menu.exportAs") {
                 ForEach(ExportFormat.Group.allCases) { group in
                     Section(LocalizedStringKey(group.titleKey)) {
-                        ForEach(ExportFormat.allCases.filter { $0.group == group && $0 != .zip }) { format in
+                        ForEach((state?.availableFormats ?? []).filter { $0.group == group }) { format in
                             Button(LocalizedStringKey(format.titleKey)) { state?.request(.export(format)) }
                         }
                     }

@@ -7,6 +7,8 @@ import SwiftUI
 final class MacAppState {
     enum Action: Equatable { case export(ExportFormat?), print, revealInFinder, importPackage, openLibraryFolder }
     var selected: RoomRecord?
+    /// Formats exportables pour la pièce sélectionnée (les USDZ dépendent du contenu du paquet).
+    var availableFormats: [ExportFormat] = []
     var pendingAction: Action?
     var hasSelection: Bool { selected != nil }
     func request(_ action: Action) { pendingAction = action }

@@ -134,7 +134,8 @@ struct RoomPackage {
             result = Result { try body(u) }
         }
         if let coordError { throw coordError }
-        return try result!.get()
+        guard let result else { throw AppError.storageFailed("NSFileCoordinator n'a pas exécuté la lecture de \(url.lastPathComponent)") }
+        return try result.get()
     }
 
     static func coordinatedWrite(at url: URL, options: NSFileCoordinator.WritingOptions, _ body: (URL) throws -> Void) throws {
