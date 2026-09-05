@@ -63,4 +63,37 @@ enum SyntheticRooms {
     static func lShapedRoom() -> ScanInput {
         ScanInput(story: 1, sectionLabels: [.bedroom], surfaces: walls(closing: lShapeCorners))
     }
+
+    // MARK: - Maisons (v2)
+
+    /// Rectangle `w` × `d` dont le coin bas-gauche est `origin`, sol à la hauteur `floorY`, avec une porte au sud.
+    static func rectangularRoom(origin: Point2D, width w: Double, depth d: Double, floorY: Float = 0, label: RoomLabel = .unidentified) -> ScanInput {
+        let c = [origin, origin + Point2D(x: w, y: 0), origin + Point2D(x: w, y: d), origin + Point2D(x: 0, y: d)]
+        var surfaces = c.indices.map { i -> ScanSurface in
+            let a = c[i], b = c[(i + 1) % 4], mid = (a + b) * 0.5
+            let t = simd_float4x4.roomPlacement(x: Float(mid.x), y: floorY + wallHeight / 2, z: Float(-mid.y), yaw: Float(atan2(b.y - a.y, b.x - a.x)))
+            return ScanSurface(category: .wall, dimensions: SIMD3(Float((b - a).length), wallHeight, 0), transform: t, confidence: .high)
+        }
+        surfaces.append(opening(.door, on: surfaces[0], from: c[0], to: c[1], along: 0.5, width: 0.9, height: 2.0, bottom: floorY))
+        let center = (c[0] + c[2]) * 0.5
+        surfaces.append(ScanSurface(category: .floor, dimensions: SIMD3(Float(w), Float(d), 0), transform: .roomPlacement(x: Float(center.x), y: floorY, z: Float(-center.y))))
+        return ScanInput(sectionLabels: [label], surfaces: surfaces)
+    }
+
+    /// Deux pièces mitoyennes (4 × 3 m et 3 × 3 m) sur un même niveau, mur commun en x = 4.
+    static func twoRoomApartment() -> StructureInput {
+        StructureInput(rooms: [
+            rectangularRoom(origin: Point2D(x: 0, y: 0), width: 4, depth: 3, label: .livingRoom),
+            rectangularRoom(origin: Point2D(x: 4, y: 0), width: 3, depth: 3, label: .kitchen),
+        ])
+    }
+
+    /// Maison à étage : deux pièces au sol (y = 0 et 0.02 : tolérance) et une chambre à 2.7 m.
+    static func twoStoryHouse() -> StructureInput {
+        StructureInput(rooms: [
+            rectangularRoom(origin: Point2D(x: 0, y: 0), width: 4, depth: 3, label: .livingRoom),
+            rectangularRoom(origin: Point2D(x: 4, y: 0), width: 3, depth: 3, floorY: 0.02, label: .kitchen),
+            rectangularRoom(origin: Point2D(x: 0, y: 0), width: 4, depth: 3, floorY: 2.7, label: .bedroom),
+        ])
+    }
 }
