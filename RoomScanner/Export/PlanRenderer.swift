@@ -422,8 +422,12 @@ struct PlanRenderer {
 
 extension PlanRenderer {
     /// Vignette de bibliothèque (600 × 400 px, sans cartouche).
-    static func thumbnailPNG(for plan: FloorPlan) -> Data? {
+    static func thumbnailPNG(for plan: FloorPlan) -> Data? { thumbnailPNG(for: House(room: plan)) }
+
+    /// Vignette d'une maison : premier niveau seulement (le plan superposé de plusieurs niveaux serait illisible).
+    static func thumbnailPNG(for house: House) -> Data? {
         var r = PlanRenderer(); r.options.mode = .fill; r.options.showObjects = true
-        return r.pngData(House(room: plan), pixels: CGSize(width: 600, height: 400))
+        let shown = house.stories.count > 1 ? House(id: house.id, name: house.name, stories: [house.stories[0]]) : house
+        return r.pngData(shown, pixels: CGSize(width: 600, height: 400))
     }
 }

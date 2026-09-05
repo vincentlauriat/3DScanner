@@ -44,7 +44,7 @@ struct CloudItemStatus: Equatable {
     ]
 }
 
-/// Observe en continu les `.roomscan` du conteneur iCloud (`NSMetadataQuery`) et
+/// Observe en continu les `.roomscan` et `.housescan` du conteneur iCloud (`NSMetadataQuery`) et
 /// déclenche le téléchargement de ceux qui ne sont pas encore sur l'appareil.
 @MainActor
 final class UbiquityMonitor {
@@ -55,7 +55,7 @@ final class UbiquityMonitor {
 
     init() {
         query.searchScopes = [NSMetadataQueryUbiquitousDocumentsScope]
-        query.predicate = NSPredicate(format: "%K LIKE %@", NSMetadataItemFSNameKey, "*.\(FileLayout.packageExtension)")
+        query.predicate = NSPredicate(format: "%K LIKE %@ OR %K LIKE %@", NSMetadataItemFSNameKey, "*.\(FileLayout.packageExtension)", NSMetadataItemFSNameKey, "*.\(FileLayout.housePackageExtension)")
         query.notificationBatchingInterval = 0.5
     }
 

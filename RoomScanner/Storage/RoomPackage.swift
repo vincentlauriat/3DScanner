@@ -90,6 +90,22 @@ struct RoomPackage {
         }
     }
 
+    /// Lit le paquet entier (copie, imbrication dans une maison). Les fichiers optionnels absents restent `nil`.
+    static func read(from packageURL: URL) throws -> RoomPackage {
+        try coordinatedRead(at: packageURL) { url in
+            typealias F = FileLayout.PackageFile
+            func optional(_ name: String) -> Data? {
+                let f = url.appendingPathComponent(name)
+                return FileManager.default.fileExists(atPath: f.path) ? try? Data(contentsOf: f) : nil
+            }
+            let record = try decoder.decode(RoomRecord.self, from: Data(contentsOf: url.appendingPathComponent(F.meta)))
+            let plan = try decoder.decode(FloorPlan.self, from: Data(contentsOf: url.appendingPathComponent(F.plan)))
+            let scan = try optional(F.scan).map { try decoder.decode(ScanInput.self, from: $0) }
+            return RoomPackage(record: record, plan: plan, scan: scan, capturedRoomData: optional(F.capturedRoom),
+                               usdzData: optional(F.usdz), usdzMeshData: optional(F.usdzMesh), thumbnailPNG: optional(F.thumbnail))
+        }
+    }
+
     static func usdzURL(in packageURL: URL) -> URL? {
         let f = packageURL.appendingPathComponent(FileLayout.PackageFile.usdz)
         return FileManager.default.fileExists(atPath: f.path) ? f : nil

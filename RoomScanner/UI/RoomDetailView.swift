@@ -52,7 +52,7 @@ struct RoomDetailView: View {
             }
         }
         .sheet(isPresented: $exporting) {
-            if let plan { ExportSheet(record: currentRecord, plan: plan).environment(store) }
+            if let plan { ExportSheet(record: currentRecord, plan: plan, packageURL: store.packageURL(for: currentRecord)).environment(store) }
         }
         .alert("detail.rename", isPresented: $renaming) {
             TextField("detail.rename.placeholder", text: $newName)
@@ -76,7 +76,7 @@ struct RoomDetailView: View {
             case .plan:
                 #if os(macOS)
                 Plan2DView(house: House(room: plan))
-                    .onDrag { DragExportProvider.provider(house: House(room: plan), record: currentRecord, format: .pdf, packageURL: store.packageURL(for: currentRecord)) }
+                    .onDrag { DragExportProvider.provider(subject: ExportSubject(record: currentRecord, plan: plan, packageURL: store.packageURL(for: currentRecord)), format: .pdf) }
                     .help("mac.dragHint")
                 #else
                 Plan2DView(house: House(room: plan))

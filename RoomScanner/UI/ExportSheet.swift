@@ -1,14 +1,18 @@
 import SwiftUI
 
-/// Feuille d'export d'une pièce : choix du format, génération dans un dossier
+/// Feuille d'export d'une pièce ou d'une maison (`ExportSubject`) : choix du format, génération dans un dossier
 /// temporaire, puis partage (`ShareLink`), enregistrement via le sélecteur système
 /// ou copie dans `Exports/` du stockage courant (iCloud Drive en phase 7).
 struct ExportSheet: View {
     @Environment(RoomStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    let record: RoomRecord
-    let plan: FloorPlan
+    let subject: ExportSubject
     var initialFormat: ExportFormat? = nil
+
+    init(subject: ExportSubject, initialFormat: ExportFormat? = nil) { self.subject = subject; self.initialFormat = initialFormat }
+    init(record: RoomRecord, plan: FloorPlan, packageURL: URL?, initialFormat: ExportFormat? = nil) {
+        self.init(subject: ExportSubject(record: record, plan: plan, packageURL: packageURL), initialFormat: initialFormat)
+    }
 
     @State private var selected: ExportFormat = .pdf
     @State private var result: URL?
@@ -19,10 +23,8 @@ struct ExportSheet: View {
 
     @State private var meshSource: ExportService.MeshSource = .parametric
 
-    private var packageURL: URL { store.packageURL(for: record) }
-    private var formats: [ExportFormat] { ExportService.availableFormats(packageURL: packageURL) }
-    private var hasScanMesh: Bool { ExportService.hasScanMesh(packageURL: packageURL) }
-    private var house: House { House(room: plan) }
+    private var formats: [ExportFormat] { ExportService.availableFormats(for: subject) }
+    private var hasScanMesh: Bool { subject.usdzMeshURL != nil }
 
     var body: some View {
         NavigationStack {
@@ -119,10 +121,10 @@ struct ExportSheet: View {
     private func select(_ format: ExportFormat) {
         selected = format
         result = nil; error = nil; savedToExports = false; working = true
-        let house = self.house, record = self.record, packageURL = self.packageURL
+        let subject = self.subject
         var service = ExportService(); service.meshSource = meshSource
         Task.detached(priority: .userInitiated) { [service] in
-            let outcome = Result { try service.export(house, record: record, format: format, packageURL: packageURL) }
+            let outcome = Result { try service.export(subject, format: format) }
             await MainActor.run {
                 guard selected == format else { return }
                 working = false
@@ -136,7 +138,7 @@ struct ExportSheet: View {
 
     private func saveToExports(_ url: URL) {
         do {
-            try store.saveExport(url, for: record)
+            try store.saveExport(url, for: subject)
             savedToExports = true
         } catch {
             self.error = error.localizedDescription

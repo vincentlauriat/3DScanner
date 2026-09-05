@@ -113,10 +113,18 @@ targets:
             UTTypeConformsTo: [com.apple.package]
             UTTypeTagSpecification:
               public.filename-extension: [roomscan]
+          - UTTypeIdentifier: fr.vincentlauriat.roomscanner.house
+            UTTypeDescription: 3D Scanner house scan
+            UTTypeConformsTo: [com.apple.package]
+            UTTypeTagSpecification:
+              public.filename-extension: [housescan]
         CFBundleDocumentTypes:
           - CFBundleTypeName: 3D Scanner room scan
             LSHandlerRank: Owner
             LSItemContentTypes: [fr.vincentlauriat.roomscanner.room]
+          - CFBundleTypeName: 3D Scanner house scan
+            LSHandlerRank: Owner
+            LSItemContentTypes: [fr.vincentlauriat.roomscanner.house]
 
   RoomScannerTests:
     type: bundle.unit-test
@@ -193,11 +201,20 @@ targets:
             UTTypeConformsTo: [com.apple.package]
             UTTypeTagSpecification:
               public.filename-extension: [roomscan]
+          - UTTypeIdentifier: fr.vincentlauriat.roomscanner.house
+            UTTypeDescription: 3D Scanner house scan
+            UTTypeConformsTo: [com.apple.package]
+            UTTypeTagSpecification:
+              public.filename-extension: [housescan]
         CFBundleDocumentTypes:
           - CFBundleTypeName: 3D Scanner room scan
             CFBundleTypeRole: Viewer
             LSHandlerRank: Owner
             LSItemContentTypes: [fr.vincentlauriat.roomscanner.room]
+          - CFBundleTypeName: 3D Scanner house scan
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            LSItemContentTypes: [fr.vincentlauriat.roomscanner.house]
 
   RoomScannerMacTests:
     type: bundle.unit-test

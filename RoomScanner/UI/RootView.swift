@@ -21,8 +21,8 @@ struct RootView: View {
             .environment(store)
             .task { await store.activateCloudIfAvailable() }
             .onOpenURL { url in
-                guard url.pathExtension == FileLayout.packageExtension else { return }
-                do { try store.importPackage(from: url) } catch { importError = error.localizedDescription }
+                guard [FileLayout.packageExtension, FileLayout.housePackageExtension].contains(url.pathExtension) else { return }
+                do { try store.importAny(from: url) } catch { importError = error.localizedDescription }
             }
             .alert("cloud.importFailed", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
                 Button("common.ok") { importError = nil }

@@ -13,14 +13,14 @@ final class MacUITests: XCTestCase {
 
     func testDragProviderRegistersTypeAndName() {
         let record = RoomRecord(plan: plan)
-        let p = DragExportProvider.provider(house: House(room: plan), record: record, format: .dxf, packageURL: nil)
+        let p = DragExportProvider.provider(subject: ExportSubject(record: record, plan: plan, packageURL: nil), format: .dxf)
         XCTAssertEqual(p.suggestedName, "Salon.dxf")
         XCTAssertTrue(p.registeredTypeIdentifiers.contains(ExportFormat.dxf.utType.identifier))
     }
 
     func testDragProviderProducesFileOnDemand() {
         let record = RoomRecord(plan: plan)
-        let p = DragExportProvider.provider(house: House(room: plan), record: record, format: .svg, packageURL: nil)
+        let p = DragExportProvider.provider(subject: ExportSubject(record: record, plan: plan, packageURL: nil), format: .svg)
         let exp = expectation(description: "file")
         p.loadFileRepresentation(forTypeIdentifier: UTType.svg.identifier) { url, error in
             XCTAssertNil(error)
@@ -36,7 +36,7 @@ final class MacUITests: XCTestCase {
         XCTAssertFalse(state.hasSelection)
         state.request(.print)
         XCTAssertEqual(state.pendingAction, .print)
-        state.selected = RoomRecord(plan: plan)
+        state.selected = .room(RoomRecord(plan: plan))
         XCTAssertTrue(state.hasSelection)
     }
 

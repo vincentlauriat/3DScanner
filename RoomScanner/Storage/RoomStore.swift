@@ -9,6 +9,8 @@ import Observation
 final class RoomStore {
     private(set) var location: StorageLocation
     private(set) var records: [RoomRecord] = []
+    /// Maisons (`.housescan`, v2), du plus récent au plus ancien.
+    private(set) var houseRecords: [HouseRecord] = []
     private(set) var lastError: AppError?
     /// État iCloud par paquet (vide en stockage local).
     private(set) var cloudStatus: [UUID: CloudItemStatus] = [:]
@@ -79,7 +81,7 @@ final class RoomStore {
         cloudStatus = status
         pendingDownloads = items.filter { !$0.isAvailableLocally }.count
         reload()
-        let conflicts = items.filter { $0.hasUnresolvedConflicts && $0.isAvailableLocally && !failedConflictResolutions.contains($0.url) }.map(\.url)
+        let conflicts = items.filter { $0.hasUnresolvedConflicts && $0.isAvailableLocally && $0.url.pathExtension == FileLayout.packageExtension && !failedConflictResolutions.contains($0.url) }.map(\.url)
         if !conflicts.isEmpty { resolveConflicts(at: conflicts) }
     }
 
@@ -137,11 +139,53 @@ final class RoomStore {
         return record
     }
 
+    /// Importe un `.roomscan` ou un `.housescan` selon l'extension.
+    @discardableResult
+    func importAny(from url: URL) throws -> LibraryItem {
+        url.pathExtension == FileLayout.housePackageExtension ? .house(try importHousePackage(from: url)) : .room(try importPackage(from: url))
+    }
+
+    /// Importe un `.housescan` ; un identifiant déjà présent reçoit une nouvelle identité (la maison
+    /// et ses pièces imbriquées) et un suffixe.
+    @discardableResult
+    func importHousePackage(from url: URL) throws -> HouseRecord {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        try location.prepare()
+        var record = try HousePackage.readRecord(from: url)
+        let dest = location.housePackageURL(for: record.id)
+        if FileManager.default.fileExists(atPath: dest.path) {
+            var house = try HousePackage.readHouse(from: url)
+            record.id = UUID(); record.name += " " + String(localized: "cloud.importedSuffix"); house.id = record.id; house.name = record.name
+            let rooms = try HousePackage.roomPackageURLs(in: url).map { try RoomPackage.read(from: $0) }
+            let package = HousePackage(record: record, house: house, structure: try HousePackage.readStructure(from: url), capturedStructureData: nil,
+                                       rooms: rooms, usdzData: HousePackage.usdzURL(in: url).flatMap { try? Data(contentsOf: $0) },
+                                       thumbnailPNG: HousePackage.thumbnailURL(in: url).flatMap { try? Data(contentsOf: $0) })
+            try package.write(to: location.housePackageURL(for: record.id))
+        } else {
+            try RoomPackage.coordinatedWrite(at: dest, options: .forReplacing) { target in
+                try FileManager.default.copyItem(at: url, to: target)
+            }
+        }
+        reload()
+        return record
+    }
+
     /// Copie un export dans `Exports/<Pièce>/` de la racine courante (iCloud Drive ou local) ;
     /// visible dans Fichiers / Finder et par toute app tierce.
     @discardableResult
     func saveExport(_ fileURL: URL, for record: RoomRecord) throws -> URL {
-        let folder = location.exportsURL.appendingPathComponent(ExportService.folderName(for: record), isDirectory: true)
+        try saveExport(fileURL, folderName: ExportService.folderName(for: record))
+    }
+
+    @discardableResult
+    func saveExport(_ fileURL: URL, for subject: ExportSubject) throws -> URL {
+        try saveExport(fileURL, folderName: ExportService.folderName(for: subject))
+    }
+
+    @discardableResult
+    func saveExport(_ fileURL: URL, folderName: String) throws -> URL {
+        let folder = location.exportsURL.appendingPathComponent(folderName, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let dest = folder.appendingPathComponent(fileURL.lastPathComponent)
         try RoomPackage.coordinatedWrite(at: dest, options: .forReplacing) { target in
@@ -161,6 +205,10 @@ final class RoomStore {
             // Un paquet iCloud pas encore téléchargé n'a pas de `meta.json` lisible : ignoré
             // jusqu'à la notification du moniteur.
             records = urls.compactMap { try? RoomPackage.readRecord(from: $0) }
+                .sorted { $0.createdAt > $1.createdAt }
+            let houseURLs = ((try? fm.contentsOfDirectory(at: location.housesURL, includingPropertiesForKeys: nil)) ?? [])
+                .filter { $0.pathExtension == FileLayout.housePackageExtension }
+            houseRecords = houseURLs.compactMap { try? HousePackage.readRecord(from: $0) }
                 .sorted { $0.createdAt > $1.createdAt }
             lastError = nil
         } catch {
@@ -220,5 +268,78 @@ final class RoomStore {
     func delete(_ record: RoomRecord) throws {
         try RoomPackage.delete(at: packageURL(for: record))
         records.removeAll { $0.id == record.id }
+    }
+
+    // MARK: Maisons (v2)
+
+    func packageURL(for record: HouseRecord) -> URL { location.housePackageURL(for: record.id) }
+
+    func packageURL(for item: LibraryItem) -> URL {
+        switch item { case .room(let r): packageURL(for: r); case .house(let h): packageURL(for: h) }
+    }
+
+    /// Nom proposé pour une nouvelle maison (« Maison », « Maison 2 », …).
+    func proposedHouseName() -> String {
+        let base = String(localized: "house.defaultName")
+        let existing = Set(houseRecords.map(\.name))
+        if !existing.contains(base) { return base }
+        var n = 2
+        while existing.contains("\(base) \(n)") { n += 1 }
+        return "\(base) \(n)"
+    }
+
+    @discardableResult
+    func saveHouse(_ package: HousePackage) throws -> HouseRecord {
+        try location.prepare()
+        try package.write(to: packageURL(for: package.record))
+        houseRecords.removeAll { $0.id == package.record.id }
+        houseRecords.insert(package.record, at: 0)
+        houseRecords.sort { $0.createdAt > $1.createdAt }
+        return package.record
+    }
+
+    /// Maison d'un paquet. Quand `structure.json` est présent, la maison est **recalculée** par le
+    /// Domain courant (noms des pièces conservés depuis `house.json`) et le paquet rafraîchi si
+    /// elle diffère ; sinon `house.json` fait foi.
+    func house(for record: HouseRecord) throws -> House {
+        let url = packageURL(for: record)
+        let stored = try HousePackage.readHouse(from: url)
+        guard let structure = try? HousePackage.readStructure(from: url) else { return stored }
+        var rebuilt = HouseBuilder().build(from: structure, name: record.name)
+        rebuilt.id = stored.id
+        let storedNames = Dictionary(stored.allRooms.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
+        for s in rebuilt.stories.indices {
+            for r in rebuilt.stories[s].rooms.indices {
+                if let n = storedNames[rebuilt.stories[s].rooms[r].id] { rebuilt.stories[s].rooms[r].name = n }
+            }
+        }
+        if rebuilt != stored {
+            var updated = HouseRecord(house: rebuilt, createdAt: record.createdAt)
+            updated.schemaVersion = record.schemaVersion
+            try? HousePackage.update(record: updated, house: rebuilt, in: url)
+            if let png = PlanRenderer.thumbnailPNG(for: rebuilt) { try? HousePackage.writeThumbnail(png, in: url) }
+            if let i = houseRecords.firstIndex(where: { $0.id == record.id }) { houseRecords[i] = updated }
+        }
+        return rebuilt
+    }
+
+    func rename(_ record: HouseRecord, to newName: String) throws {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != record.name else { return }
+        var house = try house(for: record)
+        house.name = trimmed
+        var updated = record
+        updated.name = trimmed
+        try HousePackage.update(record: updated, house: house, in: packageURL(for: record))
+        if let i = houseRecords.firstIndex(where: { $0.id == record.id }) { houseRecords[i] = updated }
+    }
+
+    func delete(_ record: HouseRecord) throws {
+        try HousePackage.delete(at: packageURL(for: record))
+        houseRecords.removeAll { $0.id == record.id }
+    }
+
+    func delete(_ item: LibraryItem) throws {
+        switch item { case .room(let r): try delete(r); case .house(let h): try delete(h) }
     }
 }
