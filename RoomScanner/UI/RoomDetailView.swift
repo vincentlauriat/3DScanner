@@ -43,7 +43,9 @@ struct RoomDetailView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button { exporting = true } label: { Label("detail.export", systemImage: "square.and.arrow.up") }
                     .disabled(plan == nil)
+                    #if os(iOS)
                     .keyboardShortcut("e", modifiers: .command)
+                    #endif
             }
             ToolbarItem(placement: .primaryAction) {
                 Button { newName = currentRecord.name; renaming = true } label: { Label("detail.rename", systemImage: "pencil") }
@@ -71,7 +73,14 @@ struct RoomDetailView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
             switch tab {
-            case .plan: Plan2DView(house: House(room: plan))
+            case .plan:
+                #if os(macOS)
+                Plan2DView(house: House(room: plan))
+                    .onDrag { DragExportProvider.provider(house: House(room: plan), record: currentRecord, format: .pdf, packageURL: store.packageURL(for: currentRecord)) }
+                    .help("mac.dragHint")
+                #else
+                Plan2DView(house: House(room: plan))
+                #endif
             case .viewer:
                 VStack(spacing: 0) {
                     ViewerView(house: House(room: plan), state: viewerState)
