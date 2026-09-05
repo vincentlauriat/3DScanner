@@ -6,6 +6,8 @@ import ImageIO
 struct RoomListView: View {
     @Environment(RoomStore.self) private var store
     @State private var showScanner = false
+    @State private var showSettings = false
+    @State private var pendingDeletion: [RoomRecord] = []
     @State private var selection: RoomRecord?
     @State private var path: [RoomRecord] = []
 
@@ -30,6 +32,9 @@ struct RoomListView: View {
             .toolbar {
                 #if os(iOS)
                 ToolbarItem(placement: .cancellationAction) { CloudStatusBadge() }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { showSettings = true } label: { Label("settings.title", systemImage: "gearshape") }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button { showScanner = true } label: { Label("list.scan", systemImage: "camera.viewfinder") }
                         .disabled(!scanSupported)
@@ -42,6 +47,10 @@ struct RoomListView: View {
             }
             #endif
         }
+        .sheet(isPresented: $showSettings) { SettingsView().environment(store) }
+        .confirmationDialog("list.delete.confirm \(pendingDeletion.first?.name ?? "")", isPresented: Binding(get: { !pendingDeletion.isEmpty }, set: { if !$0 { pendingDeletion = [] } }), titleVisibility: .visible) {
+            Button("common.delete", role: .destructive) { confirmDeletion() }
+        } message: { Text("list.delete.message") }
         .onAppear {
             store.reload()
             // `-RoomScannerAutoOpenFirst YES` : ouvre la première pièce (captures d'écran, essais).
@@ -81,9 +90,12 @@ struct RoomListView: View {
     }
 
     private func delete(at offsets: IndexSet) {
-        for record in offsets.map({ store.records[$0] }) {
-            try? store.delete(record)
-        }
+        pendingDeletion = offsets.map { store.records[$0] }
+    }
+
+    private func confirmDeletion() {
+        for record in pendingDeletion { try? store.delete(record) }
+        pendingDeletion = []
     }
 }
 

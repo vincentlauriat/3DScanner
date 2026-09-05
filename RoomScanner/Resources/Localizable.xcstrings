@@ -1095,13 +1095,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Archive of every format."
+            "value": "Every format above plus a README.txt, in one archive."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Archive de tous les formats."
+            "value": "Tous les formats ci-dessus et un README.txt, dans une seule archive."
           }
         }
       }
@@ -1344,6 +1344,40 @@
         }
       }
     },
+    "list.delete.confirm %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete “%@”?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer « %@ » ?"
+          }
+        }
+      }
+    },
+    "list.delete.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The scan and its plan will be permanently deleted. Exports you already saved are kept."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le scan et son plan seront supprimés définitivement. Les exports déjà enregistrés sont conservés."
+          }
+        }
+      }
+    },
     "list.empty.mac": {
       "extractionState": "manual",
       "localizations": {
@@ -1510,6 +1544,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choisissez un ou plusieurs scans (.roomscan)"
+          }
+        }
+      }
+    },
+    "mac.menu.checkForUpdates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check for Updates…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher les mises à jour…"
           }
         }
       }
@@ -2262,6 +2313,108 @@
         }
       }
     },
+    "readme.area %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Floor area: %1$@ · Perimeter: %2$@ · Ceiling height: %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Surface au sol : %1$@ · Périmètre : %2$@ · Hauteur sous plafond : %3$@"
+          }
+        }
+      }
+    },
+    "readme.counts %lld %lld %lld %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld walls, %2$lld doors, %3$lld windows, %4$lld detected objects."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld murs, %2$lld portes, %3$lld fenêtres, %4$lld objets détectés."
+          }
+        }
+      }
+    },
+    "readme.files": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fichiers :"
+          }
+        }
+      }
+    },
+    "readme.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "https://vincentlauriat.github.io/3DScanner/"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "https://vincentlauriat.github.io/3DScanner/"
+          }
+        }
+      }
+    },
+    "readme.scannedOn %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanned on %@ with 3D Scanner (iPhone, LiDAR / Apple RoomPlan)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanné le %@ avec 3D Scanner (iPhone, LiDAR / Apple RoomPlan)."
+          }
+        }
+      }
+    },
+    "readme.units": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Units: metres (DXF, OBJ, STL, PLY, USDZ, JSON), millimetres (SVG). 3D axes: y up."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unités : mètres (DXF, OBJ, STL, PLY, USDZ, JSON), millimètres (SVG). Repère 3D : y vers le haut."
+          }
+        }
+      }
+    },
     "room.label.bathroom": {
       "extractionState": "manual",
       "localizations": {
@@ -2428,6 +2581,261 @@
           "stringUnit": {
             "state": "translated",
             "value": "Traitement du scan…"
+          }
+        }
+      }
+    },
+    "settings.about.header": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À propos"
+          }
+        }
+      }
+    },
+    "settings.about.source": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source code (GitHub)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code source (GitHub)"
+          }
+        }
+      }
+    },
+    "settings.about.version": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        }
+      }
+    },
+    "settings.about.website": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project website"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Site du projet"
+          }
+        }
+      }
+    },
+    "settings.icloud.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With iCloud Drive, rooms and exports live in the “3D Scanner” folder (Files, Finder), shared between iPhone and Mac. Turning it off deletes nothing: the app goes back to the device’s local folder."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avec iCloud Drive, vos pièces et exports sont dans le dossier « 3D Scanner » (Fichiers, Finder) et partagés entre iPhone et Mac. Désactiver ne supprime rien : l’app revient au dossier local de l’appareil."
+          }
+        }
+      }
+    },
+    "settings.icloud.header": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Storage"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stockage"
+          }
+        }
+      }
+    },
+    "settings.icloud.status": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current location"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emplacement actuel"
+          }
+        }
+      }
+    },
+    "settings.icloud.toggle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use iCloud Drive"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser iCloud Drive"
+          }
+        }
+      }
+    },
+    "settings.openFolder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open 3D Scanner Folder"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir le dossier 3D Scanner"
+          }
+        }
+      }
+    },
+    "settings.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages"
+          }
+        }
+      }
+    },
+    "settings.updates.auto": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check for updates automatically"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher automatiquement les mises à jour"
+          }
+        }
+      }
+    },
+    "settings.updates.devBuild": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Development build: Sparkle updates are disabled (no public key)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version de développement : les mises à jour Sparkle sont désactivées (pas de clé publique)."
+          }
+        }
+      }
+    },
+    "settings.updates.header": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updates"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mises à jour"
+          }
+        }
+      }
+    },
+    "settings.updates.last": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last check"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dernière vérification"
+          }
+        }
+      }
+    },
+    "settings.updates.never": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Never"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jamais"
           }
         }
       }

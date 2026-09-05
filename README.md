@@ -30,13 +30,13 @@ unit-tested on the simulator from JSON fixtures; the scan screen is tested on de
 | Measurements list (area, perimeter, ceiling height, every wall/door/window, detected objects) | ✅ built | with confidence indicator |
 | Export 2D: PDF (A4 landscape), PNG, SVG, DXF R12 | ✅ built | hand-written writers, no dependencies |
 | Export 3D: USDZ (parametric or raw scan mesh), OBJ, STL, PLY | ✅ built (device validation pending) | USDZ from RoomPlan; OBJ/STL/PLY from the plan mesh, or from the scan mesh via Model I/O |
-| Export data: structured plan JSON, ZIP of everything | ✅ JSON built · ZIP planned | |
+| Export data: structured plan JSON, ZIP of everything (+ README.txt) | ✅ built | |
 | Share sheet (AirDrop, Files, Mail, any installed app), Save As…, copy to `Exports/` | ✅ built | `ShareLink`, `fileExporter` |
 | Room library, rename, delete, re-export without rescanning | ✅ built | `.roomscan` packages |
 | **iCloud Drive sync** iPhone ↔ Mac, "3D Scanner" folder in Files & Finder, "Save to iCloud Drive" for exports, offline fallback, conflict-safe | ✅ built (device validation pending) | ubiquity container, `NSMetadataQuery`, `NSFileCoordinator` |
 | **Mac companion app**: sidebar library, 2D plan, 3D viewer (mouse/trackpad orbit), measurements, File › Export (⌘E), Print (⌘P), drag & drop to other apps, Open With…, Reveal in Finder, double-click `.roomscan` | ✅ built (visual check pending) | shared codebase, `RoomScannerMac` target |
-| **Sparkle auto-update** on Mac (signed DMG, notarized) | ✅ planned | `appcast.xml` on `main` |
-| French / English UI | ✅ planned | |
+| **Sparkle auto-update** on Mac (signed DMG, notarized) | ✅ integrated · first release pending | `appcast.xml` on `main` |
+| French / English UI | ✅ built | |
 | Whole-house merge (multi-room, multi-story) | 🔜 v2 | RoomPlan `StructureBuilder`; v1 model (`House`), viewer and exporters are already house-ready |
 | glTF / GLB export | 🔜 v2 | Model I/O cannot write glTF; custom writer |
 | Compass / north on plan, imperial units, manual edits | 🔜 v2 | |
@@ -80,7 +80,7 @@ See [`ARCHITECTURE_EN.md`](ARCHITECTURE_EN.md) (English, source of truth) / [`AR
 - [x] Phase 6 — 3D exports (USDZ, OBJ, STL, PLY)
 - [x] Phase 7 — iCloud Drive sync (`.roomscan` packages, Exports folder, offline fallback, conflicts)
 - [x] Phase 8 — Mac companion app (split view, menus, print, drag & drop, Open With)
-- [ ] Phase 9 — Library, ZIP, settings, icons, localization, Sparkle integration
+- [x] Phase 9 — Library, ZIP, settings, icons, localization, Sparkle integration
 - [ ] Phase 10 — v1.0.0 release (iOS + notarized Mac DMG with Sparkle appcast)
 - [ ] v2 — whole-house merge, glTF, compass, imperial units
 

@@ -4,8 +4,13 @@ import SwiftUI
 /// Imprimer… (⌘P), Révéler dans le Finder (⇧⌘R), Ouvrir le dossier 3D Scanner.
 struct MacMenuCommands: Commands {
     @FocusedValue(\.macAppState) private var state
+    let updater: UpdaterController
 
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            Button("mac.menu.checkForUpdates") { updater.checkForUpdates() }
+                .disabled(!updater.canCheckForUpdates)
+        }
         CommandGroup(replacing: .newItem) {
             Button("mac.menu.import") { state?.request(.importPackage) }
                 .keyboardShortcut("o", modifiers: .command)

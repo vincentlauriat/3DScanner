@@ -38,7 +38,7 @@ struct ExportService {
         var formats: [ExportFormat] = [.pdf, .png, .svg, .dxf]
         if let packageURL, RoomPackage.usdzURL(in: packageURL) != nil { formats.append(.usdzParametric) }
         if let packageURL, RoomPackage.usdzMeshURL(in: packageURL) != nil { formats.append(.usdzMesh) }
-        formats += [.obj, .stl, .ply, .json]
+        formats += [.obj, .stl, .ply, .json, .zip]
         return formats
     }
 
@@ -88,6 +88,23 @@ struct ExportService {
         }
     }
 
+    /// Dossier temporaire avec tous les exports (sauf le ZIP lui-même) + README.txt, puis compression.
+    private func archive(_ house: House, record: RoomRecord, packageURL: URL?, to dest: URL) throws {
+        let staging = FileManager.default.temporaryDirectory.appendingPathComponent("RoomScannerArchive-\(UUID().uuidString)", isDirectory: true)
+        let folder = staging.appendingPathComponent(Self.folderName(for: record), isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: staging) }
+        var files: [(name: String, format: ExportFormat)] = []
+        for format in Self.availableFormats(packageURL: packageURL) where format != .zip {
+            let url = try export(house, record: record, format: format, packageURL: packageURL, to: folder)
+            files.append((url.lastPathComponent, format))
+        }
+        if let plan = house.allRooms.first {
+            try ArchiveExporter.readme(record: record, plan: plan, files: files, locale: locale).write(to: folder.appendingPathComponent("README.txt"), atomically: true, encoding: .utf8)
+        }
+        try ArchiveExporter.zip(directory: folder, to: dest)
+    }
+
     private func copyFromPackage(_ file: String, packageURL: URL?, to dest: URL) throws {
         guard let packageURL else { throw ExportError.missingSource(file) }
         let src = packageURL.appendingPathComponent(file)
@@ -110,7 +127,7 @@ struct ExportService {
         case .pdf, .png, .svg, .dxf, .json, .obj, .stl, .ply:
             try data(for: house, format: format, title: record.name).write(to: dest, options: .atomic)
         case .zip:
-            throw ExportError.notAvailable(format)
+            try archive(house, record: record, packageURL: packageURL, to: dest)
         }
         return dest
     }
