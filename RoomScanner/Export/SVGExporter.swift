@@ -41,7 +41,7 @@ struct SVGExporter {
                 }
                 // Cote
                 let seg = wall.segment
-                guard seg.length > 0.15 else { continue }
+                guard seg.length >= PlanRenderer.minimumDimensionedLength else { continue }
                 let outward = side.inward(of: seg) * -1
                 let a = seg.start + outward * PlanRenderer.dimensionOffset, c = seg.end + outward * PlanRenderer.dimensionOffset
                 dims += line(Segment2D(start: a, end: c), t, "stroke=\"#126bdb\" stroke-width=\"12\" marker-start=\"url(#arrow)\" marker-end=\"url(#arrow)\"")

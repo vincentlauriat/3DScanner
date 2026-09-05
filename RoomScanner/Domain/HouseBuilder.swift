@@ -5,7 +5,8 @@ import Foundation
 /// niveaux sont déduits de la hauteur des sols, les pièces sont nommées et
 /// dédoublonnées comme en v1. Aucune dépendance RoomPlan (v2, D26).
 struct HouseBuilder {
-    var planBuilder = FloorPlanBuilder()
+    /// Repère monde partagé : pas d'alignement par pièce (la maison sera alignée globalement en v2).
+    var planBuilder: FloorPlanBuilder = { var b = FloorPlanBuilder(); b.alignToLongestWall = false; return b }()
     var storyDetector = StoryDetector()
     var naming = RoomNaming()
 

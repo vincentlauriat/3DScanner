@@ -35,7 +35,7 @@ struct DXFExporter {
                     e.polyline([piece.start + n, piece.end + n, piece.end - n, piece.start - n].map(t.apply), layer: .walls)
                 }
                 let seg = wall.segment
-                guard seg.length > 0.15 else { continue }
+                guard seg.length >= PlanRenderer.minimumDimensionedLength else { continue }
                 let outward = side.inward(of: seg) * -1
                 let off = outward * PlanRenderer.dimensionOffset
                 let a = seg.start + off, b = seg.end + off

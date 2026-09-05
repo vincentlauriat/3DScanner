@@ -42,6 +42,8 @@ struct PlanRenderer {
     /// Marge autour du plan (m) réservée aux cotes.
     static let dimensionMargin = 0.55
     static let dimensionOffset = 0.30
+    /// Les murs plus courts (retours, piliers) ne sont pas cotés : leurs libellés se chevauchaient sur les vrais scans.
+    static let minimumDimensionedLength = 0.5
 
     var options = Options()
 
@@ -290,7 +292,7 @@ struct PlanRenderer {
 
     private func drawDimension(_ wall: Wall, side: InteriorSide, mapper: Mapper, in ctx: CGContext) {
         let seg = wall.segment
-        guard seg.length > 0.15 else { return }
+        guard seg.length >= PlanRenderer.minimumDimensionedLength else { return }
         // Ligne de cote à l'extérieur du mur.
         let n = seg.leftNormal
         let outward = side.inward(of: seg) * -1

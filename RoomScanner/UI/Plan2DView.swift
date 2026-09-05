@@ -35,10 +35,10 @@ struct Plan2DView: View {
     private func render(size: CGSize) -> CGImage? {
         guard size.width > 10, size.height > 10 else { return nil }
         var r = PlanRenderer()
-        r.options.mode = .page(titleBlock: false)
-        // Rendu à 2× la densité d'écran pour rester net une fois zoomé.
-        let px = CGSize(width: size.width * displayScale * 2, height: size.height * displayScale * 2)
-        return r.image(house, pixels: px)
+        // À l'écran : le plan remplit la zone (pas d'échelle papier) et les textes sont en points,
+        // rendus à 2× la densité d'écran pour rester nets une fois zoomés.
+        r.options.mode = .fill
+        return r.image(house, pageSize: size, pixelScale: displayScale * 2)
     }
 
     private var drag: some Gesture {

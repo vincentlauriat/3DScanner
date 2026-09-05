@@ -186,8 +186,24 @@ final class RoomStore {
         return package.record
     }
 
+    /// Plan d'une pièce. Quand `scan.json` est présent, le plan est **recalculé** par le Domain
+    /// courant (contour du sol, alignement, corrections) ; s'il diffère de `plan.json`, le paquet
+    /// est rafraîchi (plan + vignette) pour que tous les appareils convergent. Sans `scan.json`
+    /// (paquet importé minimal), `plan.json` fait foi.
     func plan(for record: RoomRecord) throws -> FloorPlan {
-        try RoomPackage.readPlan(from: packageURL(for: record))
+        let url = packageURL(for: record)
+        let stored = try RoomPackage.readPlan(from: url)
+        guard let scan = (try? RoomPackage.readScan(from: url)) ?? nil else { return stored }
+        var rebuilt = FloorPlanBuilder().build(from: scan, name: record.name)
+        rebuilt.id = stored.id; rebuilt.story = stored.story; rebuilt.transform = stored.transform
+        if rebuilt != stored {
+            var updated = record
+            updated.areaM2 = RoomMeasurements(plan: rebuilt).floorArea
+            try? RoomPackage.update(record: updated, plan: rebuilt, in: url)
+            if let png = PlanRenderer.thumbnailPNG(for: rebuilt) { try? RoomPackage.writeThumbnail(png, in: url) }
+            if let i = records.firstIndex(where: { $0.id == record.id }) { records[i] = updated }
+        }
+        return rebuilt
     }
 
     func rename(_ record: RoomRecord, to newName: String) throws {

@@ -113,6 +113,23 @@ enum Polygon2D {
 
     /// Triangulation d'un polygone simple (convexe ou concave, sans trou) par
     /// découpage d'oreilles. Retourne des triplets d'indices dans `pts`.
+    /// Supprime les sommets quasi colinéaires (distance à la corde < `tolerance`) et les doublons.
+    /// RoomPlan livre des contours de sol à 40+ points dont la plupart sont alignés.
+    static func simplified(_ pts: [Point2D], tolerance: Double = 0.01) -> [Point2D] {
+        guard pts.count > 3 else { return pts }
+        var out = pts
+        var changed = true
+        while changed && out.count > 3 {
+            changed = false
+            for i in out.indices {
+                let a = out[(i + out.count - 1) % out.count], b = out[i], c = out[(i + 1) % out.count]
+                let seg = Segment2D(start: a, end: c)
+                if a.distance(to: b) < tolerance || seg.distance(to: b) < tolerance { out.remove(at: i); changed = true; break }
+            }
+        }
+        return out
+    }
+
     static func triangulate(_ pts: [Point2D]) -> [(Int, Int, Int)] { triangulation(pts).triangles }
 
     /// Comme `triangulate`, en signalant si tout le polygone a pu être découpé (`complete`).
