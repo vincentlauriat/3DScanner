@@ -11,14 +11,19 @@ struct StorageLocation: Equatable {
 
     var roomsURL: URL { documentsURL.appendingPathComponent(FileLayout.roomsFolder, isDirectory: true) }
     var exportsURL: URL { documentsURL.appendingPathComponent(FileLayout.exportsFolder, isDirectory: true) }
+    var housesURL: URL { documentsURL.appendingPathComponent(FileLayout.housesFolder, isDirectory: true) }
 
     func packageURL(for id: UUID) -> URL {
         roomsURL.appendingPathComponent(id.uuidString).appendingPathExtension(FileLayout.packageExtension)
     }
 
+    func housePackageURL(for id: UUID) -> URL {
+        housesURL.appendingPathComponent(id.uuidString).appendingPathExtension(FileLayout.housePackageExtension)
+    }
+
     /// Crée `Rooms/` et `Exports/` si besoin.
     func prepare() throws {
-        for url in [roomsURL, exportsURL] {
+        for url in [roomsURL, exportsURL, housesURL] {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         }
     }

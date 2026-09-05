@@ -1,33 +1,45 @@
 import SwiftUI
 import ImageIO
 
-/// Bibliothèque des pièces. Phase 2 : liste + scan (iOS) + suppression ;
-/// vignettes et détails riches arrivent en phases 3 et 9.
+/// Bibliothèque : maisons (v2) puis pièces, scan (iOS), suppression, réglages.
 struct RoomListView: View {
     @Environment(RoomStore.self) private var store
     @State private var showScanner = false
     @State private var showSettings = false
-    @State private var pendingDeletion: [RoomRecord] = []
+    @State private var pendingDeletion: [LibraryItem] = []
     @State private var selection: RoomRecord?
-    @State private var path: [RoomRecord] = []
+    @State private var path: [LibraryItem] = []
 
     var body: some View {
         NavigationStack(path: $path) {
             Group {
-                if store.records.isEmpty {
+                if store.records.isEmpty && store.houseRecords.isEmpty {
                     emptyState
                 } else {
                     List {
-                        ForEach(store.records) { record in
-                            NavigationLink(value: record) { RoomRow(record: record) }
+                        if !store.houseRecords.isEmpty {
+                            Section("library.houses") {
+                                ForEach(store.houseRecords) { record in
+                                    NavigationLink(value: LibraryItem.house(record)) { HouseRow(record: record) }
+                                }
+                                .onDelete { pendingDeletion = $0.map { .house(store.houseRecords[$0]) } }
+                            }
                         }
-                        .onDelete(perform: delete)
+                        Section(store.houseRecords.isEmpty ? "" : "library.rooms") {
+                            ForEach(store.records) { record in
+                                NavigationLink(value: LibraryItem.room(record)) { RoomRow(record: record) }
+                            }
+                            .onDelete { pendingDeletion = $0.map { .room(store.records[$0]) } }
+                        }
                     }
                 }
             }
             .navigationTitle(Text("app.name"))
-            .navigationDestination(for: RoomRecord.self) { record in
-                RoomDetailView(record: record)
+            .navigationDestination(for: LibraryItem.self) { item in
+                switch item {
+                case .room(let record): RoomDetailView(record: record)
+                case .house(let record): HouseDetailView(record: record)
+                }
             }
             .toolbar {
                 #if os(iOS)
@@ -54,7 +66,9 @@ struct RoomListView: View {
         .onAppear {
             store.reload()
             // `-RoomScannerAutoOpenFirst YES` : ouvre la première pièce (captures d'écran, essais).
-            if UserDefaults.standard.bool(forKey: "RoomScannerAutoOpenFirst"), let first = store.records.first { path = [first] }
+            if UserDefaults.standard.bool(forKey: "RoomScannerAutoOpenFirst") {
+                if let first = store.houseRecords.first { path = [.house(first)] } else if let first = store.records.first { path = [.room(first)] }
+            }
         }
     }
 
@@ -89,12 +103,8 @@ struct RoomListView: View {
         #endif
     }
 
-    private func delete(at offsets: IndexSet) {
-        pendingDeletion = offsets.map { store.records[$0] }
-    }
-
     private func confirmDeletion() {
-        for record in pendingDeletion { try? store.delete(record) }
+        for item in pendingDeletion { try? store.delete(item) }
         pendingDeletion = []
     }
 }
