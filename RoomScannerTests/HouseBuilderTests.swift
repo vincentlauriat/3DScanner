@@ -2,6 +2,35 @@ import XCTest
 @testable import RoomScanner
 
 final class HouseBuilderTests: XCTestCase {
+    func testMultiStoryPDFHasOnePagePerStoryAndPNGStacksPages() throws {
+        let house = HouseBuilder().build(from: SyntheticRooms.twoStoryHouse(), name: "Maison")
+        XCTAssertEqual(house.stories.count, 2)
+        let pages = PlanRenderer.pages(of: house)
+        XCTAssertEqual(pages.count, 2)
+        XCTAssertEqual(pages[0].name, "Maison — " + StoryNaming.localizedName(for: house.stories[0].index))
+        XCTAssertEqual(pages.map { $0.stories.count }, [1, 1])
+        let pdf = PlanRenderer().pdfData(house)
+        let text = String(decoding: pdf, as: UTF8.self)
+        XCTAssertEqual(text.components(separatedBy: "/Type /Page\n").count - 1 + text.components(separatedBy: "/Type /Page ").count - 1, 2, "deux pages")
+        let single = HouseBuilder().build(from: SyntheticRooms.twoRoomApartment(), name: "Appartement")
+        XCTAssertEqual(PlanRenderer.pages(of: single).count, 1, "un niveau → une page, nom inchangé")
+        XCTAssertEqual(PlanRenderer.pages(of: single)[0].name, "Appartement")
+        let png = try XCTUnwrap(PlanRenderer().image(house, pageSize: CGSize(width: 842, height: 595), pixelScale: 1))
+        XCTAssertEqual(png.width, 842); XCTAssertEqual(png.height, 595 * 2, "pages empilées")
+        let one = try XCTUnwrap(PlanRenderer().image(single, pageSize: CGSize(width: 842, height: 595), pixelScale: 1))
+        XCTAssertEqual(one.height, 595)
+    }
+
+    func testRoomTintsDistinguishRoomsOnlyInHouses() {
+        var r = PlanRenderer()
+        XCTAssertEqual(r.floorColor(forRoomAt: 0, of: 1), r.options.floorColor, "pièce seule : couleur par défaut")
+        XCTAssertEqual(r.floorColor(forRoomAt: 0, of: 2), PlanRenderer.roomTint(0))
+        XCTAssertNotEqual(r.floorColor(forRoomAt: 0, of: 2), r.floorColor(forRoomAt: 1, of: 2))
+        XCTAssertEqual(PlanRenderer.roomTint(PlanRenderer.roomPalette.count + 1), PlanRenderer.roomTint(1), "cycle")
+        r.options.tintRooms = false
+        XCTAssertEqual(r.floorColor(forRoomAt: 3, of: 5), r.options.floorColor)
+    }
+
     func testStoryDetectorClustersByFloorHeight() {
         let a = UUID(), b = UUID(), c = UUID(), d = UUID()
         let stories = StoryDetector().stories(floorHeights: [a: 0, b: 0.02, c: 2.7, d: -2.6])

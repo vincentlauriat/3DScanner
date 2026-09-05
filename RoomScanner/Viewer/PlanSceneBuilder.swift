@@ -11,6 +11,15 @@ import AppKit
 typealias PlatformColor = NSColor
 #endif
 
+/// `PlatformColor` depuis un `CGColor` (l'initialiseur AppKit est optionnel, celui d'UIKit non).
+func platformColor(_ cg: CGColor) -> PlatformColor {
+    #if canImport(UIKit)
+    return UIColor(cgColor: cg)
+    #else
+    return NSColor(cgColor: cg) ?? NSColor(white: 0.95, alpha: 1)
+    #endif
+}
+
 /// Construit la scène RealityKit **paramétrique** d'une maison (D13) :
 /// murs = boîtes découpées autour des ouvertures, panneaux de portes/fenêtres,
 /// sol texturé avec le plan 2D, objets, cotes 3D optionnelles.
@@ -46,8 +55,9 @@ struct PlanSceneBuilder {
     func makeScene(for house: House) -> Entity {
         let root = Entity()
         root.name = Names.root
-        for room in house.allRooms {
-            let e = makeRoom(room)
+        let count = house.allRooms.count
+        for (i, room) in house.allRooms.enumerated() {
+            let e = makeRoom(room, floorTint: count > 1 ? PlanRenderer.roomTint(i) : nil)
             e.name = Names.roomPrefix + room.id.uuidString
             e.position = SIMD3(Float(room.transform.translation.x), 0, Float(-room.transform.translation.y))
             e.orientation = simd_quatf(angle: Float(room.transform.rotation), axis: SIMD3(0, 1, 0))
@@ -56,7 +66,8 @@ struct PlanSceneBuilder {
         return root
     }
 
-    func makeRoom(_ room: FloorPlan) -> Entity {
+    /// `floorTint` : teinte de sol de la pièce dans une maison (palette `PlanRenderer.roomPalette`).
+    func makeRoom(_ room: FloorPlan, floorTint: CGColor? = nil) -> Entity {
         let roomEntity = Entity()
         let walls = Entity(); walls.name = Names.walls
         let panels = Entity(); panels.name = Names.panels
@@ -71,7 +82,7 @@ struct PlanSceneBuilder {
         } }
         roomEntity.addChild(walls)
         roomEntity.addChild(panels)
-        if let floor = makeFloor(room) { roomEntity.addChild(floor) }
+        if let floor = makeFloor(room, tint: floorTint) { roomEntity.addChild(floor) }
         if options.showObjects {
             let objects = Entity(); objects.name = Names.objects
             for o in room.objects { objects.addChild(makeObject(o)) }
@@ -110,14 +121,15 @@ struct PlanSceneBuilder {
 
     // MARK: - Sol, objets, cotes
 
-    private func makeFloor(_ room: FloorPlan) -> ModelEntity? {
+    private func makeFloor(_ room: FloorPlan, tint: CGColor?) -> ModelEntity? {
         let b = room.bounds
         guard !b.isEmpty else { return nil }
         let mesh = (try? Self.floorMesh(polygon: room.floorPolygon, bounds: b))
             ?? MeshResource.generatePlane(width: Float(b.width), depth: Float(b.height))
-        var material: RealityKit.Material = UnlitMaterial(color: PlatformColor(white: 0.95, alpha: 1))
+        var material: RealityKit.Material = UnlitMaterial(color: tint.map(platformColor) ?? PlatformColor(white: 0.95, alpha: 1))
         if options.showFloorTexture {
             var r = PlanRenderer(); r.options.locale = options.locale; r.options.showObjects = false
+            if let tint { r.options.floorColor = tint }
             if let img = r.floorTextureImage(House(room: untransformed(room)), bounds: b, pixelsPerMeter: options.floorTexturePixelsPerMeter),
                let tex = try? TextureResource.generate(from: img, options: .init(semantic: .color)) {
                 var m = UnlitMaterial(); m.color = .init(texture: .init(tex)); material = m
