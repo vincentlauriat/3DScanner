@@ -602,13 +602,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Universal mesh: Blender, SketchUp, Cinema 4D."
+            "value": "Universal mesh with groups: Blender, SketchUp, Cinema 4D."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Maillage universel : Blender, SketchUp, Cinema 4D."
+            "value": "Maillage universel avec groupes : Blender, SketchUp, Cinema 4D."
           }
         }
       }
@@ -738,13 +738,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "3D printing."
+            "value": "Binary STL for 3D printing (metres)."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impression 3D."
+            "value": "STL binaire pour l’impression 3D (mètres)."
           }
         }
       }
@@ -806,13 +806,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Raw scan mesh."
+            "value": "Raw scan mesh captured by the iPhone (large, faithful)."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Maillage brut du scan."
+            "value": "Maillage brut capturé par l’iPhone (lourd, fidèle)."
           }
         }
       }
@@ -949,6 +949,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Données"
+          }
+        }
+      }
+    },
+    "export.meshSource": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesh source"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source du maillage"
+          }
+        }
+      }
+    },
+    "export.meshSource.parametric": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan (walls, openings, objects)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan (murs, ouvertures, objets)"
+          }
+        }
+      }
+    },
+    "export.meshSource.scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raw scan mesh"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maillage brut du scan"
           }
         }
       }

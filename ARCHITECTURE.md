@@ -31,9 +31,9 @@ UI SwiftUI ─▶ RoomCaptureView (Apple RoomPlan) ─▶ CapturedRoom
 |---|---|---|---|
 | App | `RoomScanner/App` | Point d'entrée, état global observable, injection de dépendances | UI, Storage |
 | Scan (iOS seulement) | `RoomScanner/Scan` | Enveloppe `RoomCaptureView`, **possède l'`ARSession` injectable** (repère partagé pour le multi-pièces v2), delegate → `CapturedRoom`, traduction des erreurs | RoomPlan, ARKit |
-| Domain | `RoomScanner/Domain` | `ScanInput` (instantané neutre), types pivots `FloorPlan` / `House` / `Story`, `FloorPlanBuilder` (ScanInput → projection 2D), `Measurements`, `RoomNaming` | Foundation, simd uniquement |
+| Domain | `RoomScanner/Domain` | `ScanInput` (instantané neutre), types pivots `FloorPlan` / `House` / `Story`, `FloorPlanBuilder` (ScanInput → projection 2D), `WallGeometry` (boîtes de murs / panneaux partagés par le visualiseur et l'export de maillage), `Measurements`, `RoomNaming` | Foundation, simd uniquement |
 | Viewer | `RoomScanner/Viewer` | `PlanSceneBuilder` (House → entités RealityKit), `ViewerView` (`RealityView` SwiftUI, commune iOS/macOS), `ViewerMode` (caméra 3D / 2D zénith), `ARPlacementController` (iOS : `SpatialTrackingSession`, ancres de plan, 1:20 / 1:50 / 1:1), `ViewerControls` | Domain, RealityKit, Export (texture sol via `PlanRenderer`) |
-| Export | `RoomScanner/Export` | `ExportFormat` (groupes, `UTType`), `ExportService` (dossier temporaire, noms de fichiers assainis, `availableFormats`), `PlanRenderer` (PDF/PNG/vignette/texture sol), `SVGExporter`, `DXFExporter` ; USDZ copié du paquet ; OBJ/STL/PLY via Model I/O (phase 6) | Domain, Core Graphics, Model I/O, RoomPlan (USDZ) |
+| Export | `RoomScanner/Export` | `ExportFormat` (groupes, `UTType`), `ExportService` (dossier temporaire, noms de fichiers assainis, `availableFormats`), `PlanRenderer` (PDF/PNG/vignette/texture sol), `SVGExporter`, `DXFExporter` ; USDZ copié du paquet ; `PlanMeshBuilder` + `MeshWriters` (OBJ/STL/PLY depuis le plan), `ModelIOConverter` (maillage du scan) | Domain, Core Graphics, Model I/O, RoomPlan (USDZ) |
 | Storage | `RoomScanner/Storage` | CRUD des paquets `.roomscan` (`RoomStore`), `RoomPackage` (UTType), `StorageLocation` (racine iCloud ou locale), métadonnées `RoomRecord`, vignettes | Domain, Export (vignette), Foundation |
 | Sync | `RoomScanner/Sync` | `UbiquityMonitor` (liste live `NSMetadataQuery`, téléchargement à la demande, état par pièce), `CloudAvailability` (bascule iCloud ↔ local, migration), `ConflictResolver` (`NSFileVersion`) | Storage, Foundation |
 | MacUI | `RoomScanner/MacUI` (cible macOS uniquement) | `MacRootView` (split view), `MacMenuCommands` (⌘E exporter, ⌘P imprimer, Révéler dans le Finder), `PrintController`, `DragExportProvider` (`NSItemProvider`), `OpenWithMenu` (`NSWorkspace`), `MacEmptyStateView` | UI, Export, AppKit |
@@ -77,8 +77,8 @@ Tout ce qui est sous l'UI est testable sur simulateur à partir de fixtures JSON
 | PNG | `PlanRenderer.pngData` — `CGContext` bitmap @3× + `CGImageDestination` | px |
 | SVG | `SVGExporter`, écrivain texte, `viewBox` en mm (y inversé), `<g id>` floors/objects/walls/doors/windows/openings/dimensions/text, flèches `marker`, arc de porte `<path>` | mm |
 | DXF | `DXFExporter` R12 ASCII : `HEADER` (`$ACADVER` AC1009, `$INSUNITS`=6, `$EXTMIN/MAX`), `TABLES` LTYPE/LAYER (WALLS, DOORS, WINDOWS, OPENINGS, FLOOR, OBJECTS, DIMENSIONS, TEXT)/STYLE, `ENTITIES` (murs et objets en `POLYLINE` fermées, `ARC` de porte, cotes `LINE` + ticks + `TEXT` centré) | m |
-| USDZ | `CapturedRoom.export(to:exportOptions:)` `.parametric` / `.mesh` | m |
-| OBJ/STL/PLY | `MDLAsset(url: usdz).export(to:)` hors main thread | m |
+| USDZ | `CapturedRoom.export(to:exportOptions:)` au scan : `.parametric` → `room.usdz`, `.mesh` → `room-mesh.usdz` ; les exports les copient (Model I/O ne sait pas écrire d'USDZ, vérifié) | m |
+| OBJ/STL/PLY | par défaut : `PlanMeshBuilder` (`TriangleMesh` depuis `House` : boîtes de murs via `WallGeometry`, panneaux portes/fenêtres, dalle polygonale, objets ; groupes walls/doors/windows/floor/objects) + `MeshWriters` (OBJ texte, STL binaire, PLY ASCII) ; option « maillage du scan » : `ModelIOConverter` (`MDLAsset(url: room-mesh.usdz).export(to:)`), hors main thread | m, y haut, z = −y_plan |
 | JSON | contenu de `plan.json` (`FloorPlan`, `RoomPackage.encoder`) — lisible sur les deux plateformes, contrairement au `room.json` Apple | m |
 | ZIP | tout ce qui précède + README.txt | — |
 
@@ -91,6 +91,7 @@ Tout ce qui est sous l'UI est testable sur simulateur à partir de fixtures JSON
     scan.json       ScanInput (instantané neutre)
     plan.json       FloorPlan (schemaVersion) — lu par le Mac et les exporteurs
     room.usdz       export paramétrique, écrit à la sauvegarde
+    room-mesh.usdz  maillage brut du scan (optionnel, capture iPhone seulement)
     meta.json       RoomRecord
     thumbnail.png   aperçu du plan 600×400
   Exports/<Nom de la pièce>/<Nom>.pdf|dxf|svg|usdz|obj…   « Enregistrer dans iCloud Drive » — lisible par toute app 2D/3D sur les deux appareils

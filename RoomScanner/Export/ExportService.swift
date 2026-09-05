@@ -3,6 +3,8 @@ import Foundation
 /// Produit le fichier d'export d'une pièce dans un répertoire donné (par défaut
 /// un dossier temporaire dédié) et renvoie son URL, prête pour `ShareLink`,
 /// `fileExporter`, le glisser-déposer Mac ou la copie dans `Exports/`.
+/// 2D et JSON sont générés ; USDZ copiés du paquet ; OBJ/STL/PLY construits depuis
+/// le plan (`PlanMeshBuilder`) ou convertis du maillage du scan (`ModelIOConverter`).
 struct ExportService {
     var locale: Locale = .current
     var pageSize = CGSize(width: 842, height: 595)  // A4 paysage, points
@@ -19,8 +21,29 @@ struct ExportService {
         }
     }
 
-    /// Formats disponibles à ce stade (les 3D convertis et le ZIP arrivent en phases 6 et 9).
-    static var availableFormats: [ExportFormat] { [.pdf, .png, .svg, .dxf, .usdzParametric, .json] }
+    /// Source des maillages OBJ / STL / PLY.
+    enum MeshSource: String, CaseIterable, Identifiable {
+        /// Maillage paramétrique construit depuis le plan (`PlanMeshBuilder`) : propre, léger, identique iOS/Mac.
+        case parametric
+        /// Maillage brut du scan (`room-mesh.usdz`) converti par Model I/O : fidèle, lourd, iPhone seulement à la capture.
+        case scan
+        var id: String { rawValue }
+        var titleKey: String { "export.meshSource.\(rawValue)" }
+    }
+    var meshSource: MeshSource = .parametric
+
+    /// Formats proposés pour un paquet donné : les USDZ n'apparaissent que si le fichier existe
+    /// (le maillage brut n'est produit que par un scan iPhone) ; le ZIP arrive en phase 9.
+    static func availableFormats(packageURL: URL?) -> [ExportFormat] {
+        var formats: [ExportFormat] = [.pdf, .png, .svg, .dxf]
+        if let packageURL, RoomPackage.usdzURL(in: packageURL) != nil { formats.append(.usdzParametric) }
+        if let packageURL, RoomPackage.usdzMeshURL(in: packageURL) != nil { formats.append(.usdzMesh) }
+        formats += [.obj, .stl, .ply, .json]
+        return formats
+    }
+
+    /// Le paquet contient-il le maillage brut du scan ?
+    static func hasScanMesh(packageURL: URL?) -> Bool { packageURL.flatMap { RoomPackage.usdzMeshURL(in: $0) } != nil }
 
     static func fileName(for record: RoomRecord, format: ExportFormat) -> String {
         var base = record.name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -53,8 +76,18 @@ struct ExportService {
         case .json:
             guard let room = house.allRooms.first else { throw ExportError.missingSource(FileLayout.PackageFile.plan) }
             return try RoomPackage.encoder.encode(room)
+        case .obj: return MeshWriters.obj(PlanMeshBuilder().build(house), name: title)
+        case .stl: return MeshWriters.stl(PlanMeshBuilder().build(house), name: title)
+        case .ply: return MeshWriters.ply(PlanMeshBuilder().build(house), name: title)
         default: throw ExportError.notAvailable(format)
         }
+    }
+
+    private func copyFromPackage(_ file: String, packageURL: URL?, to dest: URL) throws {
+        guard let packageURL else { throw ExportError.missingSource(file) }
+        let src = packageURL.appendingPathComponent(file)
+        guard FileManager.default.fileExists(atPath: src.path) else { throw ExportError.missingSource(file) }
+        try FileManager.default.copyItem(at: src, to: dest)
     }
 
     @discardableResult
@@ -64,14 +97,14 @@ struct ExportService {
         let dest = dir.appendingPathComponent(Self.fileName(for: record, format: format))
         try? FileManager.default.removeItem(at: dest)
         switch format {
-        case .usdzParametric:
-            guard let packageURL else { throw ExportError.missingSource(FileLayout.PackageFile.usdz) }
-            let src = packageURL.appendingPathComponent(FileLayout.PackageFile.usdz)
-            guard FileManager.default.fileExists(atPath: src.path) else { throw ExportError.missingSource(FileLayout.PackageFile.usdz) }
-            try FileManager.default.copyItem(at: src, to: dest)
-        case .pdf, .png, .svg, .dxf, .json:
+        case .usdzParametric: try copyFromPackage(FileLayout.PackageFile.usdz, packageURL: packageURL, to: dest)
+        case .usdzMesh: try copyFromPackage(FileLayout.PackageFile.usdzMesh, packageURL: packageURL, to: dest)
+        case .obj where meshSource == .scan, .stl where meshSource == .scan, .ply where meshSource == .scan:
+            guard let packageURL, let src = RoomPackage.usdzMeshURL(in: packageURL) else { throw ExportError.missingSource(FileLayout.PackageFile.usdzMesh) }
+            try ModelIOConverter.convert(src, to: dest)
+        case .pdf, .png, .svg, .dxf, .json, .obj, .stl, .ply:
             try data(for: house, format: format, title: record.name).write(to: dest, options: .atomic)
-        default:
+        case .zip:
             throw ExportError.notAvailable(format)
         }
         return dest

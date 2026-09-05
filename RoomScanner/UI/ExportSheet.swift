@@ -16,7 +16,11 @@ struct ExportSheet: View {
     @State private var savingWithPicker = false
     @State private var savedToExports = false
 
-    private var formats: [ExportFormat] { ExportService.availableFormats }
+    @State private var meshSource: ExportService.MeshSource = .parametric
+
+    private var packageURL: URL { store.packageURL(for: record) }
+    private var formats: [ExportFormat] { ExportService.availableFormats(packageURL: packageURL) }
+    private var hasScanMesh: Bool { ExportService.hasScanMesh(packageURL: packageURL) }
     private var house: House { House(room: plan) }
 
     var body: some View {
@@ -30,6 +34,12 @@ struct ExportSheet: View {
                                 ForEach(items) { format in
                                     Button { select(format) } label: { row(format) }
                                         .buttonStyle(.plain)
+                                }
+                                if group == .threeD, hasScanMesh {
+                                    Picker("export.meshSource", selection: $meshSource) {
+                                        ForEach(ExportService.MeshSource.allCases) { Text(LocalizedStringKey($0.titleKey)).tag($0) }
+                                    }
+                                    .onChange(of: meshSource) { _, _ in select(selected) }
                                 }
                             }
                         }
@@ -103,9 +113,10 @@ struct ExportSheet: View {
     private func select(_ format: ExportFormat) {
         selected = format
         result = nil; error = nil; savedToExports = false; working = true
-        let house = self.house, record = self.record, packageURL = store.packageURL(for: record)
-        Task.detached(priority: .userInitiated) {
-            let outcome = Result { try ExportService().export(house, record: record, format: format, packageURL: packageURL) }
+        let house = self.house, record = self.record, packageURL = self.packageURL
+        var service = ExportService(); service.meshSource = meshSource
+        Task.detached(priority: .userInitiated) { [service] in
+            let outcome = Result { try service.export(house, record: record, format: format, packageURL: packageURL) }
             await MainActor.run {
                 guard selected == format else { return }
                 working = false

@@ -62,7 +62,7 @@ struct ScanView: View {
                 let name = store.proposedName(for: result.scan.sectionLabels.first ?? .unidentified)
                 let plan = FloorPlanBuilder().build(from: result.scan, name: name)
                 let package = RoomPackage(record: RoomRecord(plan: plan), plan: plan, scan: result.scan,
-                                          capturedRoomData: result.capturedRoomData, usdzData: result.usdzData,
+                                          capturedRoomData: result.capturedRoomData, usdzData: result.usdzData, usdzMeshData: result.usdzMeshData,
                                           thumbnailPNG: PlanRenderer.thumbnailPNG(for: plan))
                 let record = try store.save(package)
                 onSaved(record)
