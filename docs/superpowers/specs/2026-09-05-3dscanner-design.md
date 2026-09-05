@@ -104,10 +104,10 @@ Système de coordonnées RoomPlan : **Y vers le haut**, le sol est le plan **XZ*
 |---|---|---|---|
 | D1 | **`RoomCaptureView` clé en main** (approche A) | B : `RoomCaptureSession` + `ARView` custom ; C : mesh ARKit brut | L'UX de scan Apple est éprouvée ; le besoin réel est dans les plans et le partage, pas dans l'écran de scan. B double le code sans valeur ajoutée pour l'utilisateur. |
 | D2 | **SwiftUI** pour toute l'app ; `UIViewRepresentable` uniquement autour de `RoomCaptureView` (le visualiseur est du SwiftUI natif via `RealityView`) | UIKit complet | Cohérence avec les autres projets de Vincent ; `ShareLink`, `NavigationStack`, `Observable` disponibles en iOS 17. |
-| D3 | **Modèle pivot `FloorPlan`** indépendant de RoomPlan | Exporter directement depuis `CapturedRoom` | Découple les exporteurs du framework Apple ; testable sur Mac/simulateur ; permettra d'accueillir d'autres sources (fusion maison, édition manuelle). |
+| D3 | **Modèle pivot `FloorPlan`** indépendant de RoomPlan, alimenté par un instantané neutre **`ScanInput`** (surfaces/objets : `dimensions`, `transform` simd, catégorie, confiance, parent) produit par l'adaptateur `CapturedRoom → ScanInput` dans `Scan/` (iOS) | Exporter directement depuis `CapturedRoom` ; Domain important RoomPlan | **RoomPlan n'existe pas sur macOS** : le Domain, les tests et les fixtures ne peuvent dépendre que de types à nous. Découple les exporteurs du framework Apple ; testable sur Mac *et* simulateur ; accueille d'autres sources (fusion maison, édition manuelle). *(Précisé en phase 1.)* |
 | D4 | **Exports 2D écrits à la main** : PDF/PNG via Core Graphics, SVG et DXF R12 en texte | Bibliothèque DXF tierce | DXF R12 est un format texte simple (lignes, textes, calques) ; zéro dépendance ; maîtrise totale. |
 | D5 | **Exports 3D** : USDZ natif RoomPlan ; OBJ (+ STL/PLY en bonus) via Model I/O | glTF en v1 | Model I/O n'exporte pas glTF (vérifié). Un écrivain GLB maison est faisable en v2 car nous possédons la géométrie paramétrique. |
-| D6 | **Persistance fichiers** : un scan = un paquet autonome `<racine>/Rooms/<uuid>.roomscan` (JSON `CapturedRoom` + USDZ + méta + vignette), racine iCloud ou locale (voir D16, D17) | SwiftData / Core Data ; CloudKit | Un fichier par scan, visible dans Fichiers/Finder, synchronisable tel quel par iCloud Drive. YAGNI : pas de requêtes complexes. |
+| D6 | **Persistance fichiers** : un scan = un paquet autonome `<racine>/Rooms/<uuid>.roomscan` (`room.json` = `CapturedRoom` Apple brut, **`scan.json` = `ScanInput`** et **`plan.json` = `FloorPlan`** lisibles sans RoomPlan, USDZ, méta, vignette), racine iCloud ou locale (voir D16, D17). `room.json` reste la source de vérité pour la v2 (`StructureBuilder`) ; `plan.json` porte `schemaVersion` et est recalculé sur iPhone quand le builder évolue | SwiftData / Core Data ; CloudKit | Un fichier par scan, visible dans Fichiers/Finder, synchronisable tel quel par iCloud Drive. YAGNI : pas de requêtes complexes. |
 | D7 | **Une pièce à la fois** en v1 ; maison entière en v2 via `StructureBuilder` | Multi-pièces dès la v1 | La fusion (dérive, relocalisation, murs superposés) est la partie difficile ; le modèle `FloorPlan` est conçu pour N pièces dès maintenant pour ne rien réécrire. |
 | D8 | **Partage via la feuille iOS** (`ShareLink` / `UIActivityViewController`) | Intégrations directes (Dropbox, etc.) | Couvre AirDrop, Fichiers, Mail, Messages et toute app installée capable d'ouvrir le type de fichier. |
 | D9 | **Unités : centimètres** sur les plans, m² pour les surfaces ; option pouces/pieds différée | Choix d'unité en v1 | Vincent est en France ; l'option sera triviale à ajouter dans le modèle (`MeasurementFormatter`). |
@@ -252,8 +252,10 @@ RoomScanner/
 ├── Scan/
 │   ├── RoomCaptureViewRepresentable.swift  # UIViewRepresentable + Coordinator (delegate)
 │   ├── ScanView.swift                # plein écran, boutons Terminer/Annuler, overlay d'état
+│   ├── CapturedRoomAdapter.swift     # CapturedRoom → ScanInput (seul endroit qui lit les types RoomPlan)
 │   └── ScanCoordinator.swift         # possède l'ARSession (injectable), cycle de vie, réception CapturedRoom, erreurs
 ├── Domain/
+│   ├── ScanInput.swift               # instantané neutre d'un scan (surfaces/objets simd) — frontière avec RoomPlan
 │   ├── FloorPlan.swift               # types pivots (Codable, Equatable) — pur Swift
 │   ├── House.swift                   # agrégat House / Story (v1 : une pièce, transform identité)
 │   ├── FloorPlanBuilder.swift        # CapturedRoom → FloorPlan (projection XZ, cotes)
@@ -345,7 +347,7 @@ project.yml                             # XcodeGen : RoomScanner (iOS 18), RoomS
 2. L'utilisateur termine → `captureView(shouldPresent:error:)` retourne `true` → RoomPlan post-traite.
 3. `captureView(didPresent: CapturedRoom, error:)` → `ScanCoordinator` reçoit la pièce (ou l'erreur).
 4. `RoomStore.save(capturedRoom)` : crée le paquet `<racine>/Rooms/<uuid>.roomscan/` (racine = conteneur iCloud si disponible, sinon Documents local) via `NSFileCoordinator`, écrit `room.json` (JSONEncoder), `room.usdz` (`export(to:exportOptions: .parametric)`), `meta.json`, génère `thumbnail.png` via `PlanRenderer`. iCloud propage le paquet vers le Mac.
-5. `FloorPlanBuilder.build(from: capturedRoom)` → `FloorPlan` (calculé à la demande, pas persisté — le JSON brut est la source de vérité ; le pivot peut évoluer sans migration).
+5. `CapturedRoomAdapter.scanInput(from: capturedRoom)` (iOS) → `ScanInput` → `FloorPlanBuilder.build(from:name:)` → `FloorPlan`, écrit dans `plan.json` (et `scan.json`) du paquet pour que le Mac le lise sans RoomPlan ; `room.json` reste la source de vérité et permet de recalculer `plan.json` quand `FloorPlan.schemaVersion` change.
 6. `House(rooms: [floorPlan])` → `RoomDetailView` affiche Plan2D / Viewer (3D · 2D · AR) / Mesures. `PlanSceneBuilder` construit les entités RealityKit une fois ; le changement de mode ne touche que la caméra et la visibilité des murs.
 7. `ExportSheet` → `ExportService.export(room, format)` → URL dans `tmp/` → `ShareLink` (iOS : feuille de partage ; Mac : `NSSharingServicePicker`) **ou** « Enregistrer dans iCloud Drive » → copie coordonnée dans `<racine>/Exports/<Pièce>/`.
 8. Sur le Mac, `UbiquityMonitor` (`NSMetadataQuery`) voit arriver le `.roomscan`, déclenche le téléchargement si besoin, et la pièce apparaît dans la barre latérale ; le détail réutilise `FloorPlanBuilder`, `PlanRenderer`, `PlanSceneBuilder` et les exporteurs à l'identique.
@@ -404,7 +406,7 @@ struct PlacedObject: Codable, Equatable {
 - Si `polygonCorners` est non vide (mur non rectangulaire, iOS 17), la hauteur min/max vient des coins ; la trace au sol reste le segment.
 - Portes/fenêtres : `parentIdentifier` → mur ; `center` = `(t.x, t.z)` ; `width = dimensions.x`, `height = dimensions.y` ; `sillHeight = (t.y − dimensions.y/2) − floorY`.
 - Objets : centre `(t.x, t.z)`, `size = (dimensions.x, dimensions.z)`, `angle` = atan2 de la colonne 0 projetée.
-- Sol : `floors.first?.polygonCorners` projetés ; à défaut, rectangle `dimensions` centré sur `transform`.
+- Sol : contour obtenu en **chaînant les murs** (extrémités raccordées à 25 cm près, robuste et indépendant des conventions de `polygonCorners`) ; à défaut (scan partiel), englobant des murs. `polygonCorners` sera confronté aux fixtures réelles en phase 2.
 - Repère plan : X vers la droite, **Y_plan = −Z_room** pour obtenir une vue de dessus « naturelle » (nord arbitraire en v1).
 
 **Mesures** (`Measurements`) :
@@ -471,7 +473,9 @@ Messages d'erreur RoomPlan traduits en langage humain (extrait) :
 └── Documents/                 # exposé comme « iCloud Drive / 3D Scanner » (NSUbiquitousContainerIsDocumentScopePublic)
     ├── Rooms/
     │   └── 6F9619FF-….roomscan/   # paquet (un seul « fichier » dans Fichiers / Finder)
-    │       ├── room.json          # CapturedRoom encodé (source de vérité)
+    │       ├── room.json          # CapturedRoom encodé (source de vérité, lisible sur iOS seulement)
+    │       ├── scan.json          # ScanInput neutre (lisible partout, fixtures de test)
+    │       ├── plan.json          # FloorPlan (schemaVersion) — ce que le Mac et les exporteurs lisent
     │       ├── room.usdz          # export paramétrique, généré à la sauvegarde
     │       ├── meta.json          # RoomRecord { id, name, createdAt, label, areaM2, storyIndex, schemaVersion }
     │       └── thumbnail.png      # 600×400, vignette du plan 2D

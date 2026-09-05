@@ -31,7 +31,7 @@ SwiftUI UI ─▶ RoomCaptureView (Apple RoomPlan) ─▶ CapturedRoom
 |---|---|---|---|
 | App | `RoomScanner/App` | Entry point, global observable state, dependency injection | UI, Storage |
 | Scan (iOS only) | `RoomScanner/Scan` | Wraps `RoomCaptureView`, **owns the injectable `ARSession`** (shared frame for multi-room v2), delegate → `CapturedRoom`, error mapping | RoomPlan, ARKit |
-| Domain | `RoomScanner/Domain` | `FloorPlan` / `House` / `Story` pivot types, `FloorPlanBuilder` (RoomPlan → 2D projection), `Measurements`, `RoomNaming` | Foundation, simd only (RoomPlan types are consumed at the boundary) |
+| Domain | `RoomScanner/Domain` | `ScanInput` (neutral scan snapshot), `FloorPlan` / `House` / `Story` pivot types, `FloorPlanBuilder` (ScanInput → 2D projection), `Measurements`, `RoomNaming` | Foundation, simd only (RoomPlan types are consumed at the boundary) |
 | Viewer | `RoomScanner/Viewer` | `PlanSceneBuilder` (House → RealityKit entities), `ViewerView` (SwiftUI `RealityView`, shared iOS/macOS), `ViewerMode` (3D / 2D zenith camera), `ARPlacementController` (iOS: `SpatialTrackingSession`, plane anchors, 1:20 / 1:50 / 1:1), `ViewerControls` | Domain, RealityKit, Export (floor texture from `PlanRenderer`) |
 | Export | `RoomScanner/Export` | One exporter per format, shared `PlanRenderer`, `ExportService` orchestration | Domain, Core Graphics, Model I/O, RoomPlan (USDZ) |
 | Storage | `RoomScanner/Storage` | `RoomStore` CRUD of `.roomscan` packages, `RoomPackage` (UTType), `StorageLocation` (iCloud or local root), `RoomRecord` metadata, thumbnails | Domain, Export (thumbnail), Foundation |
@@ -44,9 +44,10 @@ Everything below UI is testable on the simulator from JSON fixtures.
 
 ## Key types
 
-- `CapturedRoom` (Apple, `Codable`) — persisted as-is in `room.json`; source of truth.
+- `CapturedRoom` (Apple, `Codable`) — persisted as-is in `room.json`; source of truth for v2 merging. **Readable on iOS only** (RoomPlan does not exist on macOS).
+- `ScanInput` — platform-neutral snapshot of a scan (`ScanSurface`/`ScanObject`: category, `dimensions`, `transform` simd, confidence, parent id, polygon corners). Produced by `CapturedRoomAdapter` (`Scan/`, iOS); the only input of `FloorPlanBuilder`; what tests and fixtures use on both platforms. Persisted as `scan.json`.
 - `House` — `stories: [Story]`, `Story` — `index, rooms: [FloorPlan]`. Every renderer, scene builder and exporter takes a `House`; v1 always holds one room (D14).
-- `FloorPlan` — `walls: [Wall]`, `openings: [Opening]`, `objects: [PlacedObject]`, `floorPolygon: [Point2D]`, `ceilingHeight: ClosedRange<Double>`, `bounds`, `transform` (placement in the house frame, identity in v1). Metres, `Double`, `Codable`, `Equatable`. Computed on demand, never persisted (no migrations).
+- `FloorPlan` — `walls: [Wall]`, `openings: [Opening]`, `objects: [PlacedObject]`, `floorPolygon: [Point2D]`, `ceilingHeight: ClosedRange<Double>`, `bounds`, `transform` (placement in the house frame, identity in v1). Metres, `Double`, `Codable`, `Equatable`. Persisted as `plan.json` (with `schemaVersion`) so the Mac can read it without RoomPlan; recomputed from `room.json` on iPhone when the schema changes.
 - `RoomMeasurements` — area (shoelace), perimeter, ceiling min/max, per-element lists.
 - `ExportFormat` — `pdf, png, svg, dxf, usdzParametric, usdzMesh, obj, stl, ply, json, zip` with `UTType`, extension, localized label.
 - `RoomRecord` — `meta.json`: `id, name, createdAt, label, areaM2, storyIndex, schemaVersion`.
@@ -86,7 +87,9 @@ Everything below UI is testable on the simulator from JSON fixtures.
 ```
 <root>/Documents/                      root = iCloud container (shown as "iCloud Drive / 3D Scanner") or local fallback
   Rooms/<uuid>.roomscan/               package = one file in Files / Finder
-    room.json       CapturedRoom (source of truth)
+    room.json       CapturedRoom (source of truth; iOS-only readable)
+    scan.json       ScanInput (neutral snapshot)
+    plan.json       FloorPlan (schemaVersion) — read by the Mac and the exporters
     room.usdz       parametric export, written at save time
     meta.json       RoomRecord
     thumbnail.png   600×400 plan preview
