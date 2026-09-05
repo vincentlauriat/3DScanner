@@ -1,26 +1,73 @@
 import SwiftUI
 
-/// Détail d'une pièce. Phase 2 : mesures en texte ; plan 2D, visualiseur et
-/// exports arrivent en phases 3 à 6.
+/// Détail d'une pièce : onglets Plan 2D / Mesures (le visualiseur 3D arrive en
+/// phase 4, les exports en phase 5), titre renommable.
 struct RoomDetailView: View {
     @Environment(RoomStore.self) private var store
     let record: RoomRecord
     @State private var plan: FloorPlan?
     @State private var loadError: String?
+    @State private var tab: Tab = .plan
+    @State private var renaming = false
+    @State private var newName = ""
+
+    enum Tab: Hashable { case plan, measures }
+
+    private var currentRecord: RoomRecord { store.records.first { $0.id == record.id } ?? record }
 
     var body: some View {
         Group {
             if let plan {
-                MeasuresView(plan: plan)
+                content(plan)
             } else if let loadError {
                 ContentUnavailableView(loadError, systemImage: "exclamationmark.triangle")
             } else {
                 ProgressView()
             }
         }
-        .navigationTitle(record.name)
-        .task(id: record.id) {
-            do { plan = try store.plan(for: record) } catch { loadError = error.localizedDescription }
+        .navigationTitle(currentRecord.name)
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { newName = currentRecord.name; renaming = true } label: { Label("detail.rename", systemImage: "pencil") }
+            }
+        }
+        .alert("detail.rename", isPresented: $renaming) {
+            TextField("detail.rename.placeholder", text: $newName)
+            Button("common.ok") { rename() }
+            Button("common.cancel", role: .cancel) {}
+        }
+        .task(id: record.id) { load() }
+    }
+
+    @ViewBuilder private func content(_ plan: FloorPlan) -> some View {
+        VStack(spacing: 0) {
+            Picker("", selection: $tab) {
+                Text("detail.tab.plan").tag(Tab.plan)
+                Text("detail.tab.measures").tag(Tab.measures)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            switch tab {
+            case .plan: Plan2DView(house: House(room: plan))
+            case .measures: MeasuresView(plan: plan)
+            }
+        }
+    }
+
+    private func load() {
+        do { plan = try store.plan(for: currentRecord) } catch { loadError = error.localizedDescription }
+    }
+
+    private func rename() {
+        do {
+            try store.rename(currentRecord, to: newName)
+            load()
+        } catch {
+            loadError = error.localizedDescription
         }
     }
 }
@@ -45,9 +92,7 @@ struct MeasuresView: View {
             }
             if !m.openings.isEmpty {
                 Section("measures.openings") {
-                    ForEach(m.openings) { o in
-                        row(openingName(o.kind), openingText(o), o.confidence)
-                    }
+                    ForEach(m.openings) { o in row(openingName(o.kind), openingText(o), o.confidence) }
                 }
             }
             if !m.objects.isEmpty {
@@ -82,12 +127,8 @@ struct MeasuresView: View {
         return t
     }
 
-    private func row(_ title: LocalizedStringKey, _ value: String, _ confidence: Confidence? = nil) -> some View {
-        row(Text(title), value, confidence)
-    }
-    private func row(_ title: String, _ value: String, _ confidence: Confidence? = nil) -> some View {
-        row(Text(title), value, confidence)
-    }
+    private func row(_ title: LocalizedStringKey, _ value: String, _ confidence: Confidence? = nil) -> some View { row(Text(title), value, confidence) }
+    private func row(_ title: String, _ value: String, _ confidence: Confidence? = nil) -> some View { row(Text(title), value, confidence) }
     private func row(_ title: Text, _ value: String, _ confidence: Confidence?) -> some View {
         HStack {
             title
@@ -99,14 +140,5 @@ struct MeasuresView: View {
                     .accessibilityLabel(Text(confidence == .medium ? "confidence.medium" : "confidence.low"))
             }
         }
-    }
-}
-
-/// Libellés localisés des catégories d'objets RoomPlan (`table`, `sofa`, …).
-enum ObjectNaming {
-    static func localizedName(_ category: String) -> String {
-        let key = "object.\(category)"
-        let s = String(localized: String.LocalizationValue(key), bundle: .main)
-        return s == key ? category.capitalized : s
     }
 }
