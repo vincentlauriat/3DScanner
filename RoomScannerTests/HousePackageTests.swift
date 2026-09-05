@@ -145,6 +145,27 @@ final class HousePackageTests: XCTestCase {
         XCTAssertEqual(saved.deletingLastPathComponent().lastPathComponent, "Villa-Test")
     }
 
+    func testAssembleBuildsHouseAndNestedRoomsWithCaptures() throws {
+        let structure = SyntheticRooms.twoRoomApartment()
+        let firstID = structure.rooms[0].id
+        let extras = [firstID: HousePackage.RoomExtras(capturedRoomData: Data("room".utf8), usdzData: Data([7]), usdzMeshData: nil)]
+        let pkg = HousePackage.assemble(structure: structure, name: "Appartement", capturedStructureData: Data("structure".utf8), usdzData: Data([1]), roomExtras: extras)
+        XCTAssertEqual(pkg.house.name, "Appartement")
+        XCTAssertEqual(pkg.rooms.count, 2)
+        XCTAssertEqual(pkg.rooms.map(\.plan), pkg.house.allRooms, "un .roomscan par plan, même ordre")
+        let first = try XCTUnwrap(pkg.rooms.first { $0.record.id == firstID })
+        XCTAssertEqual(first.capturedRoomData, Data("room".utf8)); XCTAssertEqual(first.usdzData, Data([7]))
+        XCTAssertEqual(first.scan?.id, firstID, "scan.json de la pièce")
+        XCTAssertNotNil(first.thumbnailPNG)
+        let second = try XCTUnwrap(pkg.rooms.first { $0.record.id != firstID })
+        XCTAssertNil(second.capturedRoomData, "pas de capture fournie → nil")
+        XCTAssertEqual(pkg.capturedStructureData, Data("structure".utf8)); XCTAssertEqual(pkg.usdzData, Data([1]))
+        XCTAssertNotNil(pkg.thumbnailPNG)
+        XCTAssertEqual(pkg.record.roomCount, 2); XCTAssertEqual(pkg.record.storyCount, 1)
+        try store.saveHouse(pkg)
+        XCTAssertEqual(try store.house(for: pkg.record), pkg.house, "rien à recalculer juste après l'assemblage")
+    }
+
     func testRoomJSONStaysAFloorPlan() throws {
         let plan = FloorPlanBuilder().build(from: SyntheticRooms.rectangularRoom().scan, name: "Salon")
         let subject = ExportSubject(record: RoomRecord(plan: plan), plan: plan, packageURL: nil)

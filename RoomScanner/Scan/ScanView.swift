@@ -3,13 +3,22 @@ import SwiftUI
 
 /// Écran de scan plein écran : guidage Apple, Annuler / Terminer, traitement,
 /// puis enregistrement dans le `RoomStore` et retour à la liste.
+/// Mode maison : « Pièce suivante » enchaîne les pièces dans le même repère, « Terminer la maison »
+/// fusionne et enregistre un `.housescan`.
 struct ScanView: View {
     @Environment(RoomStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @State private var coordinator = ScanCoordinator()
+    @State private var coordinator: ScanCoordinator
     @State private var saveError: AppError?
-    /// Identifiant de la pièce créée, transmis à l'appelant pour l'ouvrir.
-    var onSaved: (RoomRecord) -> Void = { _ in }
+    let mode: ScanMode
+    /// Élément créé (pièce ou maison), transmis à l'appelant pour l'ouvrir.
+    var onSaved: (LibraryItem) -> Void
+
+    init(mode: ScanMode = .room, onSaved: @escaping (LibraryItem) -> Void = { _ in }) {
+        self.mode = mode
+        self.onSaved = onSaved
+        _coordinator = State(initialValue: ScanCoordinator(mode: mode))
+    }
 
     var body: some View {
         ZStack {
@@ -38,20 +47,43 @@ struct ScanView: View {
                 Button(role: .cancel) { coordinator.cancel(); dismiss() } label: { Text("common.cancel") }
                     .buttonStyle(.bordered)
                 Spacer()
-                Button { coordinator.finish() } label: { Text("scan.finish") }
+                if mode == .house {
+                    Text("scan.house.room \(coordinator.capturedRooms.count + 1)")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .background(.regularMaterial, in: Capsule())
+                    Spacer()
+                }
+                Button { coordinator.finish() } label: { Text(mode == .house ? "scan.finishRoom" : "scan.finish") }
                     .buttonStyle(.borderedProminent)
                     .disabled(coordinator.state != .scanning)
             }
             .padding()
             Spacer()
         }
-        if coordinator.state == .processing {
+        switch coordinator.state {
+        case .processing, .merging:
             VStack(spacing: 12) {
                 ProgressView()
-                Text("scan.processing")
+                Text(coordinator.state == .merging ? "scan.merging" : "scan.processing")
             }
             .padding(24)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        case .roomCaptured(let count):
+            VStack(spacing: 16) {
+                Image(systemName: "checkmark.circle.fill").font(.largeTitle).foregroundStyle(.green)
+                Text("scan.house.captured \(count)").font(.headline)
+                Text("scan.house.hint").font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Button { coordinator.nextRoom() } label: { Label("scan.nextRoom", systemImage: "arrow.right.circle") }
+                    .buttonStyle(.borderedProminent)
+                Button { coordinator.finishHouse() } label: { Label("scan.finishHouse", systemImage: "house.fill") }
+                    .buttonStyle(.bordered)
+            }
+            .padding(24)
+            .frame(maxWidth: 360)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        default:
+            EmptyView()
         }
     }
 
@@ -65,7 +97,18 @@ struct ScanView: View {
                                           capturedRoomData: result.capturedRoomData, usdzData: result.usdzData, usdzMeshData: result.usdzMeshData,
                                           thumbnailPNG: PlanRenderer.thumbnailPNG(for: plan))
                 let record = try store.save(package)
-                onSaved(record)
+                onSaved(.room(record))
+                dismiss()
+            } catch {
+                saveError = .storageFailed(error.localizedDescription)
+            }
+        case .finishedHouse(let result):
+            do {
+                let extras = result.rooms.mapValues { HousePackage.RoomExtras(capturedRoomData: $0.capturedRoomData, usdzData: $0.usdzData, usdzMeshData: $0.usdzMeshData) }
+                let package = HousePackage.assemble(structure: result.structure, name: store.proposedHouseName(),
+                                                    capturedStructureData: result.capturedStructureData, usdzData: result.usdzData, roomExtras: extras)
+                let record = try store.saveHouse(package)
+                onSaved(.house(record))
                 dismiss()
             } catch {
                 saveError = .storageFailed(error.localizedDescription)

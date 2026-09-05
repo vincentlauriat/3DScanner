@@ -4,10 +4,9 @@ import ImageIO
 /// Bibliothèque : maisons (v2) puis pièces, scan (iOS), suppression, réglages.
 struct RoomListView: View {
     @Environment(RoomStore.self) private var store
-    @State private var showScanner = false
+    @State private var scanMode: ScanMode?
     @State private var showSettings = false
     @State private var pendingDeletion: [LibraryItem] = []
-    @State private var selection: RoomRecord?
     @State private var path: [LibraryItem] = []
 
     var body: some View {
@@ -48,14 +47,17 @@ struct RoomListView: View {
                     Button { showSettings = true } label: { Label("settings.title", systemImage: "gearshape") }
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button { showScanner = true } label: { Label("list.scan", systemImage: "camera.viewfinder") }
-                        .disabled(!scanSupported)
+                    Menu {
+                        Button { scanMode = .room } label: { Label("list.scanRoom", systemImage: "square.split.bottomrightquarter") }
+                        Button { scanMode = .house } label: { Label("list.scanHouse", systemImage: "house") }
+                    } label: { Label("list.scan", systemImage: "camera.viewfinder") }
+                    .disabled(!scanSupported)
                 }
                 #endif
             }
             #if os(iOS)
-            .fullScreenCover(isPresented: $showScanner) {
-                ScanView(onSaved: { selection = $0 }).environment(store)
+            .fullScreenCover(item: $scanMode) { mode in
+                ScanView(mode: mode, onSaved: { path = [$0] }).environment(store)
             }
             #endif
         }
@@ -88,8 +90,10 @@ struct RoomListView: View {
             } description: {
                 Text("list.empty.message")
             } actions: {
-                Button { showScanner = true } label: { Label("list.scan", systemImage: "camera.viewfinder") }
+                Button { scanMode = .room } label: { Label("list.scanRoom", systemImage: "camera.viewfinder") }
                     .buttonStyle(.borderedProminent)
+                Button { scanMode = .house } label: { Label("list.scanHouse", systemImage: "house") }
+                    .buttonStyle(.bordered)
             }
         } else {
             UnsupportedDeviceView()

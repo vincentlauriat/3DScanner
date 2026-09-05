@@ -562,6 +562,38 @@
         }
       }
     },
+    "error.roomplan.invalidInput": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The captured rooms cannot be merged."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les pièces capturées ne peuvent pas être assemblées."
+          }
+        }
+      }
+    },
+    "error.roomplan.invalidRoomLocation": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rooms do not share a frame: scan them one after another without leaving the app."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les pièces ne partagent pas le même repère : scannez-les à la suite, sans quitter l'app."
+          }
+        }
+      }
+    },
     "error.roomplan.lowTexture": {
       "extractionState": "manual",
       "localizations": {
@@ -1559,6 +1591,38 @@
     },
     "list.scan": {
       "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan a room"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanner une pièce"
+          }
+        }
+      }
+    },
+    "list.scanHouse": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan a house"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanner une maison"
+          }
+        }
+      }
+    },
+    "list.scanRoom": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2708,6 +2772,118 @@
           "stringUnit": {
             "state": "translated",
             "value": "Terminer"
+          }
+        }
+      }
+    },
+    "scan.finishHouse": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish the house"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer la maison"
+          }
+        }
+      }
+    },
+    "scan.finishRoom": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Room done"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pièce terminée"
+          }
+        }
+      }
+    },
+    "scan.house.captured %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld room(s) captured"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld pièce(s) capturée(s)"
+          }
+        }
+      }
+    },
+    "scan.house.hint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk to the next room without leaving the app: every room shares the same frame."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchez jusqu'à la pièce suivante sans quitter l'app : toutes les pièces partagent le même repère."
+          }
+        }
+      }
+    },
+    "scan.house.room %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Room %lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pièce %lld"
+          }
+        }
+      }
+    },
+    "scan.merging": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merging the house…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assemblage de la maison…"
+          }
+        }
+      }
+    },
+    "scan.nextRoom": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next room"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pièce suivante"
           }
         }
       }
