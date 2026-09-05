@@ -81,7 +81,7 @@ See [`ARCHITECTURE_EN.md`](ARCHITECTURE_EN.md) (English, source of truth) / [`AR
 - [x] Phase 7 — iCloud Drive sync (`.roomscan` packages, Exports folder, offline fallback, conflicts)
 - [x] Phase 8 — Mac companion app (split view, menus, print, drag & drop, Open With)
 - [x] Phase 9 — Library, ZIP, settings, icons, localization, Sparkle integration
-- [ ] Phase 10 — v1.0.0 release (iOS + notarized Mac DMG with Sparkle appcast)
+- [ ] Phase 10 — v1.0.0 release (iOS + notarized Mac DMG with Sparkle appcast) — release script and Sparkle key ready, publication pending
 - [ ] v2 — whole-house merge, glTF, compass, imperial units
 
 ## License

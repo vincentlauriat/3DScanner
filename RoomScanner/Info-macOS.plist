@@ -61,6 +61,8 @@
 	<true/>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/vincentlauriat/3DScanner/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>qSGDP0w1B/HVt1++Bxip35K+OUI6NUvJUSxmfY9rbhE=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
 	<key>UTExportedTypeDeclarations</key>
