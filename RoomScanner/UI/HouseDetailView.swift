@@ -2,8 +2,8 @@ import SwiftUI
 import ImageIO
 
 /// Détail d'une maison (v2) : sélecteur de niveau, onglets Plan 2D / Visualiseur / Mesures,
-/// export (⌘E), titre renommable. Le plan 2D et les mesures portent sur le niveau choisi ;
-/// le visualiseur affiche la maison entière.
+/// export (⌘E), titre renommable. Le sélecteur de niveau s'applique aux trois onglets
+/// (« Tous les niveaux » superpose les étages en 3D).
 struct HouseDetailView: View {
     @Environment(RoomStore.self) private var store
     let record: HouseRecord
@@ -72,7 +72,7 @@ struct HouseDetailView: View {
                     Text("detail.tab.measures").tag(Tab.measures)
                 }
                 .pickerStyle(.segmented)
-                if house.stories.count > 1, tab != .viewer {
+                if house.stories.count > 1 {
                     Picker("house.story", selection: $storyIndex) {
                         Text("house.story.all").tag(Int?.none)
                         ForEach(house.stories, id: \.index) { story in
@@ -96,7 +96,7 @@ struct HouseDetailView: View {
                 #endif
             case .viewer:
                 VStack(spacing: 0) {
-                    ViewerView(house: house, state: viewerState)
+                    ViewerView(house: shown(house), state: viewerState)
                     ViewerControls(state: viewerState, usdzURL: HousePackage.usdzURL(in: store.packageURL(for: currentRecord)))
                 }
             case .measures: HouseMeasuresView(house: shown(house))

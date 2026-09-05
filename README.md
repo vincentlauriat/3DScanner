@@ -37,7 +37,7 @@ unit-tested on the simulator from JSON fixtures; the scan screen is tested on de
 | **Mac companion app**: sidebar library, 2D plan, 3D viewer (mouse/trackpad orbit), measurements, File › Export (⌘E), Print (⌘P), drag & drop to other apps, Open With…, Reveal in Finder, double-click `.roomscan` | ✅ built (visual check pending) | shared codebase, `RoomScannerMac` target |
 | **Sparkle auto-update** on Mac (signed DMG, notarized) | ✅ integrated · first release pending | `appcast.xml` on `main` |
 | French / English UI | ✅ built | |
-| Whole-house merge (multi-room, multi-story) | 🚧 v2 | "Scan a house" mode (shared `ARSession`, RoomPlan `StructureBuilder`), `.housescan` package, house library, level picker, house exports — awaiting real-house validation |
+| Whole-house merge (multi-room, multi-story) | 🚧 v2 | "Scan a house" mode (shared `ARSession`, RoomPlan `StructureBuilder`), `.housescan` package, house library, level picker (2D / 3D / measures), one PDF page per level, per-room floor tints — awaiting real-house validation |
 | glTF / GLB export | 🔜 v2 | Model I/O cannot write glTF; custom writer |
 | Compass / north on plan, imperial units, manual edits | 🔜 v2 | |
 

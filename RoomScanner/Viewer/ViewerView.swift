@@ -39,6 +39,7 @@ struct ViewerView: View {
         .onChange(of: state.mode) { _, _ in modeChanged() }
         .onChange(of: state.showDimensions) { _, _ in rebuildScene() }
         .onChange(of: state.showObjects) { _, _ in rebuildScene() }
+        .onChange(of: house) { _, _ in rebuildScene(); resetView() }
         .onChange(of: state.resetToken) { _, _ in resetView() }
         #if os(iOS)
         .onChange(of: state.arScale) { _, _ in ar.apply(scale: state.arScale, to: sceneRoot) }

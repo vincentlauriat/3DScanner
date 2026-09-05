@@ -32,6 +32,21 @@ struct PlanRenderer {
         var objectStroke = CGColor(gray: 0.45, alpha: 1)
         var textColor = CGColor(gray: 0.15, alpha: 1)
         var windowColor = CGColor(red: 0.20, green: 0.55, blue: 0.95, alpha: 1)
+        /// Maison : chaque pièce reçoit une teinte de sol différente (`PlanRenderer.roomTint`).
+        var tintRooms = true
+    }
+
+    /// Teintes de sol pastel pour distinguer les pièces d'une maison (cycle de 6).
+    static let roomPalette: [CGColor] = [
+        CGColor(red: 0.93, green: 0.95, blue: 0.98, alpha: 1), CGColor(red: 0.98, green: 0.94, blue: 0.90, alpha: 1),
+        CGColor(red: 0.92, green: 0.97, blue: 0.92, alpha: 1), CGColor(red: 0.98, green: 0.96, blue: 0.88, alpha: 1),
+        CGColor(red: 0.96, green: 0.92, blue: 0.97, alpha: 1), CGColor(red: 0.90, green: 0.96, blue: 0.97, alpha: 1),
+    ]
+    static func roomTint(_ index: Int) -> CGColor { roomPalette[((index % roomPalette.count) + roomPalette.count) % roomPalette.count] }
+
+    /// Couleur de sol d'une pièce : teinte de palette dans une maison multi-pièces, sinon `floorColor`.
+    func floorColor(forRoomAt index: Int, of count: Int) -> CGColor {
+        options.tintRooms && count > 1 ? Self.roomTint(index) : options.floorColor
     }
 
     /// Dénominateurs d'échelle usuels en architecture.
@@ -49,7 +64,8 @@ struct PlanRenderer {
 
     // MARK: - Sorties
 
-    /// PDF vectoriel d'une page `size` (points). A4 paysage par défaut.
+    /// PDF vectoriel A4 paysage par défaut : une page par niveau (une maison à plusieurs niveaux
+    /// superposés serait illisible), une seule page pour une pièce ou un niveau unique.
     func pdfData(_ house: House, size: CGSize = CGSize(width: 842, height: 595), title: String? = nil) -> Data {
         let data = NSMutableData()
         var box = CGRect(origin: .zero, size: size)
@@ -57,11 +73,22 @@ struct PlanRenderer {
         var info: [CFString: Any] = [kCGPDFContextCreator: "3D Scanner"]
         if let title { info[kCGPDFContextTitle] = title }
         let ctx = CGContext(consumer: consumer, mediaBox: &box, info as CFDictionary)!
-        ctx.beginPDFPage(nil)
-        draw(house, in: ctx, size: size)
-        ctx.endPDFPage()
+        for page in Self.pages(of: house) {
+            ctx.beginPDFPage(nil)
+            draw(page, in: ctx, size: size)
+            ctx.endPDFPage()
+        }
         ctx.closePDF()
         return data as Data
+    }
+
+    /// Pages d'un plan : la maison entière si un seul niveau, sinon une « maison » par niveau,
+    /// nommée « Maison — Niveau » pour le cartouche.
+    static func pages(of house: House) -> [House] {
+        guard house.stories.count > 1 else { return [house] }
+        return house.stories.map { story in
+            House(id: house.id, name: "\(house.name) — \(StoryNaming.localizedName(for: story.index))", stories: [story])
+        }
     }
 
     /// Image bitmap RGBA (`makeImage`) de `pixels` pixels.
@@ -77,14 +104,22 @@ struct PlanRenderer {
 
     /// Image d'une *page* (points) rendue à `pixelScale` × : le calcul d'échelle
     /// se fait en points, donc « Échelle 1:n » reste exact quel que soit le facteur.
+    /// Bitmap d'une page ; pour une maison à plusieurs niveaux, les pages sont empilées verticalement.
     func image(_ house: House, pageSize: CGSize, pixelScale: CGFloat) -> CGImage? {
-        let w = Int((pageSize.width * pixelScale).rounded()), h = Int((pageSize.height * pixelScale).rounded())
+        let pages = Self.pages(of: house)
+        let w = Int((pageSize.width * pixelScale).rounded()), h = Int((pageSize.height * pixelScale).rounded()) * pages.count
         guard w > 0, h > 0,
               let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
                                   space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                   bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         ctx.scaleBy(x: pixelScale, y: pixelScale)
-        draw(house, in: ctx, size: pageSize)
+        for (i, page) in pages.enumerated() {
+            ctx.saveGState()
+            // Origine Core Graphics en bas : la première page est en haut de l'image.
+            ctx.translateBy(x: 0, y: CGFloat(pages.count - 1 - i) * pageSize.height)
+            draw(page, in: ctx, size: pageSize)
+            ctx.restoreGState()
+        }
         return ctx.makeImage()
     }
 
@@ -154,7 +189,7 @@ struct PlanRenderer {
                              y: area.midY - planH / 2 + margin * ppm - bounds.minY * ppm)
         let mapper = Mapper(origin: origin, ppm: ppm)
 
-        for room in rooms { drawRoom(room, mapper: mapper, in: ctx) }
+        for (i, room) in rooms.enumerated() { drawRoom(room, mapper: mapper, floor: floorColor(forRoomAt: i, of: rooms.count), in: ctx) }
         if titleHeight > 0 { drawTitleBlock(house, rooms: rooms, scaleDenominator: scaleDenominator, in: ctx, size: size, height: titleHeight) }
     }
 
@@ -169,7 +204,8 @@ struct PlanRenderer {
                                   bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         ctx.setFillColor(CGColor(gray: 1, alpha: 1)); ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
         let mapper = Mapper(origin: CGPoint(x: -bounds.minX * pixelsPerMeter, y: -bounds.minY * pixelsPerMeter), ppm: pixelsPerMeter)
-        for room in house.allRooms { drawRoom(room, mapper: mapper, in: ctx) }
+        let rooms = house.allRooms
+        for (i, room) in rooms.enumerated() { drawRoom(room, mapper: mapper, floor: floorColor(forRoomAt: i, of: rooms.count), in: ctx) }
         return ctx.makeImage()
     }
 
@@ -185,13 +221,13 @@ struct PlanRenderer {
         func length(_ m: Double) -> CGFloat { CGFloat(m * ppm) }
     }
 
-    private func drawRoom(_ room: FloorPlan, mapper base: Mapper, in ctx: CGContext) {
+    private func drawRoom(_ room: FloorPlan, mapper base: Mapper, floor floorColor: CGColor, in ctx: CGContext) {
         var mapper = base; mapper.transform = room.transform
         let side = InteriorSide(polygon: room.floorPolygon, fallback: room.bounds.center)
 
         // Sol
         if options.showFloor, room.floorPolygon.count >= 3 {
-            ctx.setFillColor(options.floorColor)
+            ctx.setFillColor(floorColor)
             path(room.floorPolygon, mapper: mapper, in: ctx); ctx.fillPath()
         }
         // Objets
