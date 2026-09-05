@@ -8,6 +8,7 @@ struct ExportSheet: View {
     @Environment(\.dismiss) private var dismiss
     let record: RoomRecord
     let plan: FloorPlan
+    var initialFormat: ExportFormat? = nil
 
     @State private var selected: ExportFormat = .pdf
     @State private var result: URL?
@@ -58,7 +59,7 @@ struct ExportSheet: View {
                 if case .failure(let e) = outcome { error = e.localizedDescription }
             }
         }
-        .onAppear { select(selected) }
+        .onAppear { select(initialFormat ?? selected) }
         #if os(macOS)
         .frame(minWidth: 480, minHeight: 560)
         #endif
@@ -88,6 +89,9 @@ struct ExportSheet: View {
                                              : (store.isCloud ? "export.saveToCloud" : "export.saveToExports"),
                               systemImage: savedToExports ? "checkmark.circle" : (store.isCloud ? "icloud.and.arrow.up" : "arrow.down.doc"))
                     }.disabled(savedToExports)
+                    #if os(macOS)
+                    OpenWithMenu(fileURL: result, type: selected.utType).fixedSize()
+                    #endif
                 }
                 Spacer()
             }
