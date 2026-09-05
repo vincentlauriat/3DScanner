@@ -2840,6 +2840,40 @@
         }
       }
     },
+    "story.ground": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ground floor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rez-de-chaussée"
+          }
+        }
+      }
+    },
+    "story.upper %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Floor %lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étage %lld"
+          }
+        }
+      }
+    },
     "unsupported.message": {
       "extractionState": "manual",
       "localizations": {
