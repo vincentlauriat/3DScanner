@@ -7,13 +7,28 @@ struct FloorPlanBuilder {
     /// Tolérance de raccordement des murs (m) pour reconstituer le contour.
     var chainTolerance = 0.25
     var wallThickness = FloorPlan.defaultWallThickness
+    /// Tourne le plan pour que le mur le plus long soit horizontal (RoomPlan livre un repère
+    /// monde arbitraire : la pièce arrive inclinée). Désactivé par `HouseBuilder` (repère partagé).
+    var alignToLongestWall = true
 
     func build(from scan: ScanInput, name: String) -> FloorPlan {
         let floorY = floorLevel(of: scan)
-        let walls = scan.walls.map { makeWall($0) }
-        let openings = scan.openings.map { makeOpening($0, walls: walls, floorY: floorY) }
-        let objects = scan.objects.map { makeObject($0) }
-        let polygon = floorPolygon(walls: walls, scan: scan)
+        var walls = scan.walls.map { makeWall($0) }
+        var openings = scan.openings.map { makeOpening($0, walls: walls, floorY: floorY) }
+        var objects = scan.objects.map { makeObject($0) }
+        var polygon = floorPolygon(walls: walls, scan: scan)
+        if alignToLongestWall, let longest = walls.max(by: { $0.length < $1.length }) {
+            // Rotation la plus petite (±90° max) qui rend ce mur horizontal.
+            var theta = longest.segment.angle
+            while theta > .pi / 2 { theta -= .pi }; while theta <= -.pi / 2 { theta += .pi }
+            if abs(theta) > 1e-6 {
+                let r = Transform2D(translation: .zero, rotation: -theta)
+                walls = walls.map { var w = $0; w.segment = Segment2D(start: r.apply($0.start), end: r.apply($0.end)); return w }
+                openings = openings.map { var o = $0; o.center = r.apply($0.center); o.angle -= theta; return o }
+                objects = objects.map { var o = $0; o.center = r.apply($0.center); o.angle -= theta; return o }
+                polygon = polygon.map(r.apply)
+            }
+        }
         let heights = walls.map(\.height)
         let ceiling: ClosedRange<Double> = heights.isEmpty ? 0...0 : heights.min()!...heights.max()!
         return FloorPlan(
@@ -66,9 +81,19 @@ struct FloorPlanBuilder {
 
     // MARK: - Sol
 
-    /// Contour du sol : d'abord en chaînant les murs (robuste, indépendant des
-    /// conventions de `polygonCorners`), sinon l'englobant des murs.
+    /// Contour du sol : le polygone de la surface `floor` de RoomPlan (`polygonCorners`, coordonnées
+    /// locales de la surface → monde → plan, simplifié) ; sinon le chaînage des murs ; sinon l'englobant.
     private func floorPolygon(walls: [Wall], scan: ScanInput) -> [Point2D] {
+        if let floor = scan.floors.first, floor.polygonCorners.count >= 3 {
+            let world = floor.polygonCorners.map { c -> Point2D in
+                let p = floor.transform * SIMD4<Float>(c.x, c.y, c.z, 1)
+                return Point2D(projecting: SIMD3(p.x, p.y, p.z))
+            }
+            let poly = Polygon2D.simplified(world, tolerance: 0.01)
+            if poly.count >= 3, Polygon2D.area(poly) > 0.5 {
+                return Polygon2D.signedArea(poly) < 0 ? poly.reversed() : poly
+            }
+        }
         if let chained = Polygon2D.chain(walls.map(\.segment), tolerance: chainTolerance) {
             return Polygon2D.signedArea(chained) < 0 ? chained.reversed() : chained
         }
