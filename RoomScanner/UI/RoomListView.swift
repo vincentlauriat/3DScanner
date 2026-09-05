@@ -29,6 +29,7 @@ struct RoomListView: View {
             }
             .toolbar {
                 #if os(iOS)
+                ToolbarItem(placement: .cancellationAction) { CloudStatusBadge() }
                 ToolbarItem(placement: .primaryAction) {
                     Button { showScanner = true } label: { Label("list.scan", systemImage: "camera.viewfinder") }
                         .disabled(!scanSupported)

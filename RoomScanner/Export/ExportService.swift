@@ -45,12 +45,17 @@ struct ExportService {
     /// Le paquet contient-il le maillage brut du scan ?
     static func hasScanMesh(packageURL: URL?) -> Bool { packageURL.flatMap { RoomPackage.usdzMeshURL(in: $0) } != nil }
 
+    /// Nom de fichier assaini (sans séparateurs ni caractères interdits).
     static func fileName(for record: RoomRecord, format: ExportFormat) -> String {
+        folderName(for: record) + format.fileSuffix + "." + format.fileExtension
+    }
+
+    /// Nom du sous-dossier `Exports/<Pièce>/` (même assainissement).
+    static func folderName(for record: RoomRecord) -> String {
         var base = record.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let forbidden = CharacterSet(charactersIn: "/\\:*?\"<>|\n\r\t")
         base = String(base.unicodeScalars.map { forbidden.contains($0) ? "-" : Character($0) })
-        if base.isEmpty { base = "room" }
-        return base + format.fileSuffix + "." + format.fileExtension
+        return base.isEmpty ? "room" : base
     }
 
     /// Répertoire temporaire propre au processus, vidé à chaque appel pour ne pas accumuler.
