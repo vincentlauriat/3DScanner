@@ -69,6 +69,210 @@
         }
       }
     },
+    "cloud.conflictSuffix": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(conflict)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(conflit)"
+          }
+        }
+      }
+    },
+    "cloud.importFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import failed"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import impossible"
+          }
+        }
+      }
+    },
+    "cloud.importedSuffix": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(imported)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(importé)"
+          }
+        }
+      }
+    },
+    "cloud.status": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud status"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "État iCloud"
+          }
+        }
+      }
+    },
+    "cloud.status.downloading %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld room(s) downloading from iCloud Drive."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld pièce(s) en cours de téléchargement depuis iCloud Drive."
+          }
+        }
+      }
+    },
+    "cloud.status.localForced": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Storage root forced at launch (demo mode)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Racine de stockage forcée au lancement (mode démonstration)."
+          }
+        }
+      }
+    },
+    "cloud.status.localNoAccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No iCloud account: rooms stay on this device. Sign in to iCloud to share them with your Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun compte iCloud : les pièces restent sur cet appareil. Connectez-vous à iCloud pour les partager avec votre Mac."
+          }
+        }
+      }
+    },
+    "cloud.status.localNoContainer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud Drive unavailable (disabled or missing container): rooms stay on this device."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud Drive indisponible (désactivé ou conteneur absent) : les pièces restent sur cet appareil."
+          }
+        }
+      }
+    },
+    "cloud.status.resolving": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting to iCloud Drive…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion à iCloud Drive…"
+          }
+        }
+      }
+    },
+    "cloud.status.synced": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your rooms live in the “3D Scanner” folder of iCloud Drive, visible in Files and the Finder, shared between iPhone and Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos pièces sont dans le dossier « 3D Scanner » d’iCloud Drive, visibles dans Fichiers et le Finder, partagées entre iPhone et Mac."
+          }
+        }
+      }
+    },
+    "cloud.title.icloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud Drive"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud Drive"
+          }
+        }
+      }
+    },
+    "cloud.title.local": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local storage"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stockage local"
+          }
+        }
+      }
+    },
     "common.cancel": {
       "extractionState": "manual",
       "localizations": {
@@ -1021,6 +1225,23 @@
         }
       }
     },
+    "export.saveToCloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save to iCloud Drive"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer dans iCloud Drive"
+          }
+        }
+      }
+    },
     "export.saveToExports": {
       "extractionState": "manual",
       "localizations": {
@@ -1034,6 +1255,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Copier dans le dossier Exports"
+          }
+        }
+      }
+    },
+    "export.savedToCloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved to iCloud Drive"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré dans iCloud Drive"
           }
         }
       }

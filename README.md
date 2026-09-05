@@ -33,7 +33,7 @@ unit-tested on the simulator from JSON fixtures; the scan screen is tested on de
 | Export data: structured plan JSON, ZIP of everything | ✅ JSON built · ZIP planned | |
 | Share sheet (AirDrop, Files, Mail, any installed app), Save As…, copy to `Exports/` | ✅ built | `ShareLink`, `fileExporter` |
 | Room library, rename, delete, re-export without rescanning | ✅ built | `.roomscan` packages |
-| **iCloud Drive sync** iPhone ↔ Mac, "3D Scanner" folder in Files & Finder, "Save to iCloud Drive" for exports, offline fallback, conflict-safe | ✅ planned | ubiquity container, `NSMetadataQuery`, `NSFileCoordinator` |
+| **iCloud Drive sync** iPhone ↔ Mac, "3D Scanner" folder in Files & Finder, "Save to iCloud Drive" for exports, offline fallback, conflict-safe | ✅ built (device validation pending) | ubiquity container, `NSMetadataQuery`, `NSFileCoordinator` |
 | **Mac companion app**: sidebar library, 2D plan, 3D viewer (mouse/trackpad orbit), measurements, File › Export (⌘E), Print (⌘P), drag & drop to other apps, Open With…, Reveal in Finder, double-click `.roomscan` | ✅ planned | shared codebase, `RoomScannerMac` target |
 | **Sparkle auto-update** on Mac (signed DMG, notarized) | ✅ planned | `appcast.xml` on `main` |
 | French / English UI | ✅ planned | |
@@ -78,7 +78,7 @@ See [`ARCHITECTURE_EN.md`](ARCHITECTURE_EN.md) (English, source of truth) / [`AR
 - [x] Phase 4 — RealityKit viewer (3D orbit, 2D top-down, AR placement on iPhone)
 - [x] Phase 5 — 2D exports (PDF, PNG, SVG, DXF)
 - [x] Phase 6 — 3D exports (USDZ, OBJ, STL, PLY)
-- [ ] Phase 7 — iCloud Drive sync (`.roomscan` packages, Exports folder, offline fallback, conflicts)
+- [x] Phase 7 — iCloud Drive sync (`.roomscan` packages, Exports folder, offline fallback, conflicts)
 - [ ] Phase 8 — Mac companion app (split view, menus, print, drag & drop, Open With)
 - [ ] Phase 9 — Library, ZIP, settings, icons, localization, Sparkle integration
 - [ ] Phase 10 — v1.0.0 release (iOS + notarized Mac DMG with Sparkle appcast)

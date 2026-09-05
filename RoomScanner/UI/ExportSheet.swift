@@ -84,7 +84,9 @@ struct ExportSheet: View {
                     ShareLink(item: result) { Label("export.share", systemImage: "square.and.arrow.up") }
                     Button { savingWithPicker = true } label: { Label("export.saveAs", systemImage: "folder") }
                     Button { saveToExports(result) } label: {
-                        Label(savedToExports ? "export.savedToExports" : "export.saveToExports", systemImage: savedToExports ? "checkmark.circle" : "arrow.down.doc")
+                        Label(savedToExports ? (store.isCloud ? "export.savedToCloud" : "export.savedToExports")
+                                             : (store.isCloud ? "export.saveToCloud" : "export.saveToExports"),
+                              systemImage: savedToExports ? "checkmark.circle" : (store.isCloud ? "icloud.and.arrow.up" : "arrow.down.doc"))
                     }.disabled(savedToExports)
                 }
                 Spacer()
@@ -130,11 +132,7 @@ struct ExportSheet: View {
 
     private func saveToExports(_ url: URL) {
         do {
-            let dir = store.location.exportsURL
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            let dest = dir.appendingPathComponent(url.lastPathComponent)
-            try? FileManager.default.removeItem(at: dest)
-            try FileManager.default.copyItem(at: url, to: dest)
+            try store.saveExport(url, for: record)
             savedToExports = true
         } catch {
             self.error = error.localizedDescription
