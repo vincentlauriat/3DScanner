@@ -87,51 +87,16 @@ struct PlanSceneBuilder {
 
     // MARK: - Géométrie des murs
 
-    /// Boîte alignée sur un segment : `from`…`to` le long du mur (m), `bottom`…`top` (m).
-    struct WallBox: Equatable {
-        var segment: Segment2D
-        var bottom: Double
-        var top: Double
-        var thickness: Double
-        var height: Double { top - bottom }
-    }
+    typealias WallBox = WallGeometry.Box
 
-    /// Découpe un mur en boîtes pleines autour de ses ouvertures : portions
-    /// pleines, linteaux au-dessus des portes, allèges sous les fenêtres.
-    func wallBoxes(_ wall: Wall, openings: [Opening]) -> [WallBox] {
-        let len = wall.length
-        guard len > 0 else { return [] }
-        let dir = wall.segment.direction
-        let h = options.flattenWalls ? Double(options.flattenedHeight) : wall.height
-        func seg(_ a: Double, _ b: Double) -> Segment2D { Segment2D(start: wall.start + dir * a, end: wall.start + dir * b) }
-        var intervals: [(Double, Double, Opening)] = openings.map { o in
-            let t = (o.center.x - wall.start.x) * dir.x + (o.center.y - wall.start.y) * dir.y
-            return (max(0, t - o.width / 2), min(len, t + o.width / 2), o)
-        }.filter { $0.1 > $0.0 }.sorted { $0.0 < $1.0 }
-        var boxes: [WallBox] = []
-        var cursor = 0.0
-        while !intervals.isEmpty {
-            let (a, b, o) = intervals.removeFirst()
-            if a > cursor + 0.005 { boxes.append(WallBox(segment: seg(cursor, a), bottom: 0, top: h, thickness: wall.thickness)) }
-            if !options.flattenWalls {
-                let bottom = o.kind == .door ? 0 : o.sillHeight
-                let top = min(bottom + o.height, h)
-                if bottom > 0.01 { boxes.append(WallBox(segment: seg(a, b), bottom: 0, top: bottom, thickness: wall.thickness)) }
-                if top < h - 0.01 { boxes.append(WallBox(segment: seg(a, b), bottom: top, top: h, thickness: wall.thickness)) }
-            }
-            cursor = max(cursor, b)
-        }
-        if cursor < len - 0.005 { boxes.append(WallBox(segment: seg(cursor, len), bottom: 0, top: h, thickness: wall.thickness)) }
-        return boxes
-    }
+    /// Géométrie des murs selon les options (aplatie en mode plan 2D).
+    var wallGeometry: WallGeometry { WallGeometry(flattenedHeight: options.flattenWalls ? Double(options.flattenedHeight) : nil) }
+
+    /// Découpe un mur en boîtes pleines autour de ses ouvertures (voir `WallGeometry`).
+    func wallBoxes(_ wall: Wall, openings: [Opening]) -> [WallBox] { wallGeometry.wallBoxes(wall, openings: openings) }
 
     /// Panneau de porte (bois) ou vitrage (verre) dans l'ouverture.
-    func panelBox(_ o: Opening, wall: Wall?) -> WallBox? {
-        guard !options.flattenWalls, o.width > 0.05, o.height > 0.05 else { return nil }
-        let bottom = o.kind == .door ? 0 : o.sillHeight
-        let thickness = (wall?.thickness ?? FloorPlan.defaultWallThickness) * 0.35
-        return WallBox(segment: o.segment, bottom: bottom, top: bottom + o.height, thickness: thickness)
-    }
+    func panelBox(_ o: Opening, wall: Wall?) -> WallBox? { wallGeometry.panelBox(o, wall: wall) }
 
     private func makeBox(_ box: WallBox, material: RealityKit.Material) -> ModelEntity {
         let mesh = MeshResource.generateBox(width: Float(box.segment.length), height: Float(box.height), depth: Float(box.thickness))

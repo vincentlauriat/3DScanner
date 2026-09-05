@@ -17,6 +17,8 @@ struct RoomPackage {
     /// `CapturedRoom` Apple encodé — opaque ici (lisible sur iOS seulement).
     var capturedRoomData: Data?
     var usdzData: Data?
+    /// Maillage brut du scan (`CapturedRoom.export(.mesh)`), optionnel.
+    var usdzMeshData: Data?
     var thumbnailPNG: Data?
 
     /// Dates ISO 8601 *avec* fractions de seconde : lisibles dans `meta.json`
@@ -56,6 +58,7 @@ struct RoomPackage {
         if let scan { try Self.encoder.encode(scan).write(to: staging.appendingPathComponent(FileLayout.PackageFile.scan)) }
         if let capturedRoomData { try capturedRoomData.write(to: staging.appendingPathComponent(FileLayout.PackageFile.capturedRoom)) }
         if let usdzData { try usdzData.write(to: staging.appendingPathComponent(FileLayout.PackageFile.usdz)) }
+        if let usdzMeshData { try usdzMeshData.write(to: staging.appendingPathComponent(FileLayout.PackageFile.usdzMesh)) }
         if let thumbnailPNG { try thumbnailPNG.write(to: staging.appendingPathComponent(FileLayout.PackageFile.thumbnail)) }
 
         try fileManager.createDirectory(at: packageURL.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -89,6 +92,11 @@ struct RoomPackage {
 
     static func usdzURL(in packageURL: URL) -> URL? {
         let f = packageURL.appendingPathComponent(FileLayout.PackageFile.usdz)
+        return FileManager.default.fileExists(atPath: f.path) ? f : nil
+    }
+
+    static func usdzMeshURL(in packageURL: URL) -> URL? {
+        let f = packageURL.appendingPathComponent(FileLayout.PackageFile.usdzMesh)
         return FileManager.default.fileExists(atPath: f.path) ? f : nil
     }
 

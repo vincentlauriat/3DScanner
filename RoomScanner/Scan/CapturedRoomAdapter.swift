@@ -33,11 +33,11 @@ enum CapturedRoomAdapter {
         try RoomPackage.encoder.encode(room)
     }
 
-    /// USDZ paramétrique produit par RoomPlan.
-    static func usdzData(for room: CapturedRoom) throws -> Data {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(room.identifier.uuidString).usdz")
+    /// USDZ produit par RoomPlan : `.parametric` (murs/ouvertures/objets en volumes) ou `.mesh` (maillage brut).
+    static func usdzData(for room: CapturedRoom, options: CapturedRoom.USDExportOptions = .parametric) throws -> Data {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(room.identifier.uuidString)-\(UUID().uuidString).usdz")
         defer { try? FileManager.default.removeItem(at: url) }
-        try room.export(to: url, exportOptions: .parametric)
+        try room.export(to: url, exportOptions: options)
         return try Data(contentsOf: url)
     }
 }

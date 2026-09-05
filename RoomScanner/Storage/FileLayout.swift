@@ -13,6 +13,7 @@ enum FileLayout {
         static let plan = "plan.json"           // FloorPlan
         static let meta = "meta.json"           // RoomRecord
         static let usdz = "room.usdz"
+        static let usdzMesh = "room-mesh.usdz" // maillage brut du scan (iOS, optionnel)
         static let thumbnail = "thumbnail.png"
     }
 }

@@ -21,6 +21,7 @@ final class ScanCoordinator {
         let scan: ScanInput
         let capturedRoomData: Data
         let usdzData: Data?
+        let usdzMeshData: Data?
         static func == (a: ScanResult, b: ScanResult) -> Bool { a.scan.id == b.scan.id }
     }
 
@@ -86,8 +87,9 @@ final class ScanCoordinator {
         do {
             let data = try CapturedRoomAdapter.encode(room)
             let usdz = try? CapturedRoomAdapter.usdzData(for: room)
+            let usdzMesh = try? CapturedRoomAdapter.usdzData(for: room, options: .mesh)
             let scan = CapturedRoomAdapter.scanInput(from: room)
-            state = .finished(ScanResult(scan: scan, capturedRoomData: data, usdzData: usdz))
+            state = .finished(ScanResult(scan: scan, capturedRoomData: data, usdzData: usdz, usdzMeshData: usdzMesh))
         } catch {
             state = .failed(.scanFailed(error.localizedDescription))
         }
