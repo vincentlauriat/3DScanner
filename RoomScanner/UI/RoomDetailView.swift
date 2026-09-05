@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Détail d'une pièce : onglets Plan 2D / Mesures (le visualiseur 3D arrive en
-/// phase 4, les exports en phase 5), titre renommable.
+/// Détail d'une pièce : onglets Plan 2D / Visualiseur / Mesures, export (⌘E),
+/// titre renommable.
 struct RoomDetailView: View {
     @Environment(RoomStore.self) private var store
     let record: RoomRecord
@@ -12,6 +12,7 @@ struct RoomDetailView: View {
         switch UserDefaults.standard.string(forKey: "RoomScannerInitialTab") { case "viewer": .viewer; case "measures": .measures; default: .plan }
     }()
     @State private var renaming = false
+    @State private var exporting = false
     @State private var newName = ""
     @State private var viewerState: ViewerState = {
         let s = ViewerState()
@@ -40,8 +41,16 @@ struct RoomDetailView: View {
         #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
+                Button { exporting = true } label: { Label("detail.export", systemImage: "square.and.arrow.up") }
+                    .disabled(plan == nil)
+                    .keyboardShortcut("e", modifiers: .command)
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button { newName = currentRecord.name; renaming = true } label: { Label("detail.rename", systemImage: "pencil") }
             }
+        }
+        .sheet(isPresented: $exporting) {
+            if let plan { ExportSheet(record: currentRecord, plan: plan).environment(store) }
         }
         .alert("detail.rename", isPresented: $renaming) {
             TextField("detail.rename.placeholder", text: $newName)
