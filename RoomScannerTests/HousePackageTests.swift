@@ -110,6 +110,22 @@ final class HousePackageTests: XCTestCase {
         XCTAssertEqual(try HousePackage.readRecord(from: store.packageURL(for: pkg.record)), record, "meta.json réécrit")
     }
 
+    /// La bibliothèque doit afficher la surface corrigée sans qu'on ouvre la maison :
+    /// `reload()` migre les paquets d'un schéma antérieur.
+    func testReloadMigratesStaleSchemaSoTheLibraryShowsTheCorrectedArea() throws {
+        var pkg = housePackage()
+        pkg.record.schemaVersion = 1
+        pkg.record.areaM2 = 999
+        try store.saveHouse(pkg)
+
+        let fresh = RoomStore(location: location)
+        fresh.reload()
+        let record = try XCTUnwrap(fresh.houseRecords.first { $0.id == pkg.record.id })
+        XCTAssertEqual(record.schemaVersion, FloorPlan.schemaVersion)
+        XCTAssertNotEqual(record.areaM2, 999, "surface recalculée dès le chargement de la bibliothèque")
+        XCTAssertEqual(record.areaM2, HouseMeasurements(house: try fresh.house(for: record)).floorArea, accuracy: 1e-9)
+    }
+
     func testImportDuplicateGetsNewIdentity() throws {
         let pkg = housePackage()
         try store.saveHouse(pkg)

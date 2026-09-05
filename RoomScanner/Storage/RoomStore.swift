@@ -25,6 +25,9 @@ final class RoomStore {
     /// Paquets dont la résolution de conflit a échoué : on ne retente pas à chaque lot du moniteur.
     @ObservationIgnored private var failedConflictResolutions: Set<URL> = []
     @ObservationIgnored private var isResolvingConflicts = false
+    /// Maisons déjà passées par la montée de schéma : un paquet sans `structure.json`
+    /// ne peut pas être migré, inutile de le relire à chaque `reload()`.
+    @ObservationIgnored private var migratedHouses: Set<UUID> = []
 
     init(location: StorageLocation, allowsCloud: Bool = true) {
         self.location = location
@@ -210,6 +213,14 @@ final class RoomStore {
                 .filter { $0.pathExtension == FileLayout.housePackageExtension }
             houseRecords = houseURLs.compactMap { try? HousePackage.readRecord(from: $0) }
                 .sorted { $0.createdAt > $1.createdAt }
+            // Montée de schéma : une maison enregistrée par une version antérieure garde dans son
+            // `meta.json` une surface et des noms périmés (schéma 2 : union des pièces, noms
+            // composés). On la recalcule une fois ici, sinon la bibliothèque afficherait l'ancienne
+            // surface jusqu'à ce que la maison soit ouverte.
+            for record in houseRecords where record.schemaVersion < FloorPlan.schemaVersion && !migratedHouses.contains(record.id) {
+                migratedHouses.insert(record.id)
+                _ = try? house(for: record)
+            }
             lastError = nil
         } catch {
             lastError = .storageFailed(error.localizedDescription)
