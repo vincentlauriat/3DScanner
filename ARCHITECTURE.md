@@ -31,7 +31,7 @@ UI SwiftUI ─▶ RoomCaptureView (Apple RoomPlan) ─▶ CapturedRoom
 |---|---|---|---|
 | App | `RoomScanner/App` | Point d'entrée, état global observable, injection de dépendances | UI, Storage |
 | Scan (iOS seulement) | `RoomScanner/Scan` | Enveloppe `RoomCaptureView`, **possède l'`ARSession` injectable** (repère partagé pour le multi-pièces v2), delegate → `CapturedRoom`, traduction des erreurs | RoomPlan, ARKit |
-| Domain | `RoomScanner/Domain` | Types pivots `FloorPlan` / `House` / `Story`, `FloorPlanBuilder` (projection RoomPlan → 2D), `Measurements`, `RoomNaming` | Foundation, simd uniquement |
+| Domain | `RoomScanner/Domain` | `ScanInput` (instantané neutre), types pivots `FloorPlan` / `House` / `Story`, `FloorPlanBuilder` (ScanInput → projection 2D), `Measurements`, `RoomNaming` | Foundation, simd uniquement |
 | Viewer | `RoomScanner/Viewer` | `PlanSceneBuilder` (House → entités RealityKit), `ViewerView` (`RealityView` SwiftUI, commune iOS/macOS), `ViewerMode` (caméra 3D / 2D zénith), `ARPlacementController` (iOS : `SpatialTrackingSession`, ancres de plan, 1:20 / 1:50 / 1:1), `ViewerControls` | Domain, RealityKit, Export (texture sol via `PlanRenderer`) |
 | Export | `RoomScanner/Export` | Un exporteur par format, `PlanRenderer` partagé, orchestration `ExportService` | Domain, Core Graphics, Model I/O, RoomPlan (USDZ) |
 | Storage | `RoomScanner/Storage` | CRUD des paquets `.roomscan` (`RoomStore`), `RoomPackage` (UTType), `StorageLocation` (racine iCloud ou locale), métadonnées `RoomRecord`, vignettes | Domain, Export (vignette), Foundation |
@@ -44,9 +44,10 @@ Tout ce qui est sous l'UI est testable sur simulateur à partir de fixtures JSON
 
 ## Types clés
 
-- `CapturedRoom` (Apple, `Codable`) — persisté tel quel dans `room.json` ; source de vérité.
+- `CapturedRoom` (Apple, `Codable`) — persisté tel quel dans `room.json` ; source de vérité pour la fusion v2. **Lisible sur iOS seulement** (RoomPlan n'existe pas sur macOS).
+- `ScanInput` — instantané neutre d'un scan (`ScanSurface`/`ScanObject` : catégorie, `dimensions`, `transform` simd, confiance, parent, coins). Produit par `CapturedRoomAdapter` (`Scan/`, iOS) ; seule entrée de `FloorPlanBuilder` ; ce que les tests et fixtures utilisent sur les deux plateformes. Persisté en `scan.json`.
 - `House` — `stories: [Story]`, `Story` — `index, rooms: [FloorPlan]`. Tous les renderers, le scene builder et les exporteurs prennent une `House` ; en v1 elle contient toujours une pièce (D14).
-- `FloorPlan` — `walls: [Wall]`, `openings: [Opening]`, `objects: [PlacedObject]`, `floorPolygon: [Point2D]`, `ceilingHeight: ClosedRange<Double>`, `bounds`, `transform` (placement dans le repère maison, identité en v1). Mètres, `Double`, `Codable`, `Equatable`. Calculé à la demande, jamais persisté (pas de migration).
+- `FloorPlan` — `walls: [Wall]`, `openings: [Opening]`, `objects: [PlacedObject]`, `floorPolygon: [Point2D]`, `ceilingHeight: ClosedRange<Double>`, `bounds`, `transform` (placement dans le repère maison, identité en v1). Mètres, `Double`, `Codable`, `Equatable`. Persisté en `plan.json` (avec `schemaVersion`) pour que le Mac le lise sans RoomPlan ; recalculé depuis `room.json` sur iPhone quand le schéma change.
 - `RoomMeasurements` — surface (lacet), périmètre, hauteur min/max, listes par élément.
 - `ExportFormat` — `pdf, png, svg, dxf, usdzParametric, usdzMesh, obj, stl, ply, json, zip` avec `UTType`, extension, libellé localisé.
 - `RoomRecord` — `meta.json` : `id, name, createdAt, label, areaM2, storyIndex, schemaVersion`.
@@ -86,7 +87,9 @@ Tout ce qui est sous l'UI est testable sur simulateur à partir de fixtures JSON
 ```
 <racine>/Documents/                    racine = conteneur iCloud (affiché « iCloud Drive / 3D Scanner ») ou repli local
   Rooms/<uuid>.roomscan/               paquet = un seul fichier dans Fichiers / Finder
-    room.json       CapturedRoom (source de vérité)
+    room.json       CapturedRoom (source de vérité ; lisible sur iOS seulement)
+    scan.json       ScanInput (instantané neutre)
+    plan.json       FloorPlan (schemaVersion) — lu par le Mac et les exporteurs
     room.usdz       export paramétrique, écrit à la sauvegarde
     meta.json       RoomRecord
     thumbnail.png   aperçu du plan 600×400
