@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Scanner — LiDAR room scans to dimensioned 2D plans and 3D models</title>
+<meta name="description" content="Scan the rooms of your house with the iPhone LiDAR. Get dimensioned 2D floor plans (PDF, SVG, DXF) and 3D models (USDZ, OBJ, STL), view them on Mac, and share them with any 2D/3D application through iCloud Drive. Free, open-source, native Swift.">
+<meta property="og:title" content="3D Scanner">
+<meta property="og:description" content="iPhone LiDAR room scans → dimensioned 2D plans + 3D models. Mac companion. iCloud Drive sharing. Free & open-source.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23127adb'/%3E%3Cpath d='M50 18 20 34v32l30 16 30-16V34z' fill='none' stroke='%23fff' stroke-width='6' stroke-linejoin='round'/%3E%3Cpath d='M20 34l30 16 30-16M50 50v32' fill='none' stroke='%23fff' stroke-width='6' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="assets/base.css">
+<style>
+  /* Identité du projet : bleu « plan d'architecte » sur le socle sombre du corpus. */
+  :root{
+    --accent:#6fb2ff; --accent-soft:rgba(111,178,255,.14); --accent-deep:#3f8dea;
+    --maxw:1100px;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:var(--z-nav);backdrop-filter:saturate(160%) blur(12px);background:rgba(10,12,18,.82);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:62px;gap:12px}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:-.2px}
+  .logo{width:32px;height:32px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:var(--on-accent);flex:none}
+  .logo svg{width:20px;height:20px}
+  .nav-links{display:flex;gap:22px;align-items:center;color:var(--muted);font-size:14.5px}
+  .nav-links a:hover{color:var(--txt)}
+  .btn{gap:8px;padding:0 20px;border-radius:11px;font-weight:650;font-size:15px;transition:transform .12s ease,background .12s,border-color .12s}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-primary{background:var(--accent);color:var(--on-accent)}
+  .btn-primary:hover{background:#8ac2ff}
+  .btn-ghost{border:1px solid var(--line);color:var(--txt);background:var(--surface)}
+  .btn-ghost:hover{border-color:#3a4257;background:var(--surface-2)}
+  .btn-sm{padding:0 15px;font-size:14px;border-radius:9px;min-height:36px}
+  .langtog{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex:none}
+  .langtog button{background:transparent;border:0;color:var(--muted);font:600 12.5px/1 var(--font-mono);padding:0 10px;min-height:36px;cursor:pointer}
+  .langtog button+button{border-left:1px solid var(--line)}
+  .langtog button:hover{color:var(--txt)}
+  .langtog button.on{background:var(--accent);color:var(--on-accent)}
+  @media(max-width:600px){.langtog button{padding:0 7px;font-size:11.5px}}
+
+  /* hero */
+  header{padding:78px 0 40px;background:radial-gradient(820px 380px at 18% -8%,var(--accent-soft),transparent 62%)}
+  .hero-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);padding:6px 13px;border-radius:999px;font-size:13px;margin-bottom:22px}
+  .pill b{color:var(--accent)}
+  h1{font-size:clamp(36px,5.4vw,58px)}
+  h1 .grad{color:var(--accent)}
+  .sub{max-width:560px;margin:20px 0 0;font-size:clamp(16px,2vw,19px);color:var(--muted)}
+  .cta{display:flex;gap:13px;flex-wrap:wrap;margin:30px 0 14px}
+  .meta{color:var(--faint);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 14px}
+  .meta b{color:var(--muted);font-weight:600}
+
+  /* maquette : plan coté dessiné en SVG */
+  .plan{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.35)}
+  .titlebar{display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--bg-lift);border-bottom:1px solid var(--line)}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+  .titlebar .name{margin-left:8px;font-size:12.5px;color:var(--faint)}
+  .titlebar .name b{color:var(--muted);font-weight:600}
+  .plan svg{display:block;width:100%;height:auto;background:#0e1119}
+  .plan .wall{stroke:var(--txt);stroke-width:5;fill:none;stroke-linejoin:miter}
+  .plan .dim{stroke:var(--accent);stroke-width:1.2;fill:none}
+  .plan text{font-family:var(--font-mono);font-size:11px;fill:var(--accent)}
+  .plan .lbl{fill:var(--muted);font-size:10px}
+  .plan .obj{fill:rgba(139,147,167,.15);stroke:var(--muted);stroke-width:1}
+  .plan .win{stroke:var(--accent);stroke-width:2.5}
+  .plan .door{stroke:var(--txt);stroke-width:1.2;fill:none;stroke-dasharray:3 3}
+
+  /* sections */
+  section{padding:74px 0;border-top:1px solid var(--line)}
+  .center{text-align:center}
+  .center .eyebrow{display:block}
+  h2{font-size:clamp(27px,3.7vw,38px);margin:9px 0 12px}
+  .lead{color:var(--muted);max-width:640px;font-size:17px}
+  .center .lead{margin-left:auto;margin-right:auto}
+  .grid{display:grid;gap:16px;margin-top:42px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;transition:border-color .15s,transform .15s}
+  .card:hover{border-color:#3a4257;transform:translateY(-2px)}
+  .card h3{font-size:16.5px;margin-bottom:5px}
+  .card p{color:var(--muted);font-size:14.5px}
+  .ico{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:21px;margin-bottom:14px}
+
+  /* formats */
+  .formats{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:28px}
+  .tag{font-family:var(--font-mono);font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--txt);padding:7px 12px;border-radius:999px}
+  .tag b{color:var(--accent);font-weight:600;margin-right:6px}
+
+  /* flow iPhone → iCloud → Mac */
+  .flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:14px;align-items:stretch;margin-top:42px}
+  .node{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+  .node h3{font-size:16px;margin-bottom:6px}
+  .node p{color:var(--muted);font-size:14px}
+  .node .k{font-family:var(--font-mono);font-size:12px;color:var(--accent);margin-bottom:10px;display:block}
+  .arrow{display:grid;place-items:center;color:var(--accent);font-size:26px}
+
+  /* status */
+  .status{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:28px 30px;margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
+  .status ol{list-style:none;display:grid;gap:8px}
+  .status li{display:flex;gap:10px;align-items:flex-start;color:var(--muted);font-size:14.5px}
+  .status li .box{width:16px;height:16px;border:1.5px solid var(--line);border-radius:4px;flex:none;margin-top:3px;display:grid;place-items:center;font-size:10px}
+  .status li.done{color:var(--txt)}
+  .status li.done .box{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .status li.now .box{border-color:var(--accent)}
+  .status .note{color:var(--muted);font-size:14.5px}
+  .status .note b{color:var(--txt)}
+
+  .final{text-align:center;background:radial-gradient(620px 280px at 50% 120%,var(--accent-soft),transparent 66%)}
+  .final .cta{justify-content:center}
+  footer{border-top:1px solid var(--line);padding:34px 0;color:var(--muted);font-size:14px;text-align:center}
+  footer a{color:var(--accent);font-weight:600}
+
+  @media(max-width:880px){
+    .hero-grid{grid-template-columns:1fr;gap:34px}
+    .g3{grid-template-columns:1fr}
+    .flow{grid-template-columns:1fr}
+    .arrow{transform:rotate(90deg)}
+    .status{grid-template-columns:1fr}
+    .nav-links a:not(.btn){display:none}
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#top"><span class="en">Skip to content</span><span class="fr">Aller au contenu</span><span class="zh">跳至內容</span></a>
+
+<nav><div class="wrap">
+  <a class="brand" href="#top"><span class="logo" aria-hidden="true"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="8" stroke-linejoin="round"><path d="M50 14 16 32v36l34 18 34-18V32z"/><path d="M16 32l34 18 34-18M50 50v36"/></svg></span>3D Scanner</a>
+  <div class="nav-links">
+    <a href="#features"><span class="en">Features</span><span class="fr">Fonctions</span><span class="zh">功能</span></a>
+    <a href="#flow"><span class="en">iPhone → Mac</span><span class="fr">iPhone → Mac</span><span class="zh">iPhone → Mac</span></a>
+    <a href="#status"><span class="en">Status</span><span class="fr">Avancement</span><span class="zh">進度</span></a>
+    <a href="https://github.com/vincentlauriat/3DScanner">GitHub</a>
+    <div class="langtog" role="group" aria-label="Language / Langue / 語言">
+      <button type="button" data-lang="en" class="on" onclick="setLang('en')">EN</button>
+      <button type="button" data-lang="fr" onclick="setLang('fr')">FR</button>
+      <button type="button" data-lang="zh" onclick="setLang('zh')">中文</button>
+    </div>
+    <a class="btn btn-primary btn-sm" href="https://github.com/vincentlauriat/3DScanner"><span class="en">Source</span><span class="fr">Source</span><span class="zh">原始碼</span></a>
+  </div>
+</div></nav>
+
+<header id="top"><div class="wrap">
+  <div class="hero-grid">
+    <div>
+      <span class="pill">📐 <span class="en">iPhone LiDAR · <b>RoomPlan</b> · iOS 18 &amp; macOS 15</span><span class="fr">LiDAR iPhone · <b>RoomPlan</b> · iOS 18 et macOS 15</span><span class="zh">iPhone LiDAR · <b>RoomPlan</b> · iOS 18 與 macOS 15</span></span>
+      <h1><span class="en">Scan a room.<br><span class="grad">Get the plan, with measurements.</span></span><span class="fr">Scannez une pièce.<br><span class="grad">Obtenez le plan, avec les mesures.</span></span><span class="zh">掃描一個房間。<br><span class="grad">得到帶尺寸的平面圖。</span></span></h1>
+      <p class="sub"><span class="en">Walk around the room with your iPhone Pro. 3D Scanner turns the LiDAR capture into a dimensioned 2D floor plan and a 3D model — then hands them to any 2D or 3D application, on the iPhone or on the Mac, through iCloud Drive.</span><span class="fr">Faites le tour de la pièce avec votre iPhone Pro. 3D Scanner transforme la capture LiDAR en plan 2D coté et en modèle 3D — puis les confie à n'importe quelle application 2D ou 3D, sur l'iPhone ou sur le Mac, via iCloud Drive.</span><span class="zh">拿著 iPhone Pro 在房間裡走一圈。3D Scanner 把 LiDAR 擷取轉換成帶尺寸的 2D 平面圖與 3D 模型，再透過 iCloud Drive 交給 iPhone 或 Mac 上的任何 2D／3D 應用程式。</span></p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/vincentlauriat/3DScanner"><span class="en">View on GitHub</span><span class="fr">Voir sur GitHub</span><span class="zh">在 GitHub 上檢視</span></a>
+        <a class="btn btn-ghost" href="#status"><span class="en">Build status</span><span class="fr">Avancement</span><span class="zh">開發進度</span></a>
+      </div>
+      <p class="meta"><span class="en"><b>Free &amp; open-source (MIT)</b> · Native Swift · iPhone Pro (LiDAR) · Mac companion · No account, no server</span><span class="fr"><b>Gratuit et open source (MIT)</b> · Swift natif · iPhone Pro (LiDAR) · Compagnon Mac · Ni compte, ni serveur</span><span class="zh"><b>免費開源（MIT）</b> · 原生 Swift · iPhone Pro（LiDAR） · Mac 伴侶程式 · 無帳號、無伺服器</span></p>
+    </div>
+
+    <div class="plan" role="img" aria-label="Dimensioned floor plan of a living room: walls, a door, a window, a sofa and a table, with lengths in centimetres and the floor area">
+      <div class="titlebar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="name"><b><span class="en">Living room</span><span class="fr">Salon</span><span class="zh">客廳</span></b> — <span class="en">2D plan · 1:50</span><span class="fr">Plan 2D · 1:50</span><span class="zh">2D 平面圖 · 1:50</span></span>
+      </div>
+      <svg viewBox="0 0 520 360" aria-hidden="true">
+        <!-- murs -->
+        <path class="wall" d="M90 70 H430 V290 H90 Z"/>
+        <!-- porte (ouverture + arc) -->
+        <path d="M150 290 H210" stroke="#0e1119" stroke-width="7"/>
+        <path class="door" d="M150 290 V230 A60 60 0 0 1 210 290"/>
+        <!-- fenêtre -->
+        <path d="M250 70 H360" stroke="#0e1119" stroke-width="7"/>
+        <path class="win" d="M250 66 H360 M250 74 H360"/>
+        <!-- objets -->
+        <rect class="obj" x="120" y="110" width="130" height="50" rx="4"/><text class="lbl" x="150" y="140"><tspan class="en">Sofa</tspan><tspan class="fr">Canapé</tspan><tspan class="zh">沙發</tspan></text>
+        <rect class="obj" x="300" y="170" width="90" height="70" rx="4"/><text class="lbl" x="326" y="210"><tspan class="en">Table</tspan><tspan class="fr">Table</tspan><tspan class="zh">桌子</tspan></text>
+        <!-- cotes -->
+        <path class="dim" d="M90 42 H430 M90 36 V48 M430 36 V48"/><text x="238" y="34">6,80 m</text>
+        <path class="dim" d="M462 70 V290 M456 70 H468 M456 290 H468"/><text x="470" y="185" transform="rotate(90 470 185)">4,40 m</text>
+        <path class="dim" d="M150 318 H210 M150 312 V324 M210 312 V324"/><text x="160" y="338">1,20 m</text>
+        <path class="dim" d="M250 320 H360 M250 314 V326 M360 314 V326"/><text x="282" y="340">2,20 m</text>
+        <text x="200" y="262" style="font-size:12px"><tspan class="en">Area 29.9 m² · ceiling 2.52 m</tspan><tspan class="fr">Surface 29,9 m² · plafond 2,52 m</tspan><tspan class="zh">面積 29.9 m² · 天花板 2.52 m</tspan></text>
+      </svg>
+    </div>
+  </div>
+</div></header>
+
+<section id="features"><div class="wrap">
+  <div class="center">
+    <p class="eyebrow"><span class="en">what it does</span><span class="fr">ce que ça fait</span><span class="zh">功能</span></p>
+    <h2><span class="en">From a LiDAR walk-through to files any tool can open</span><span class="fr">D'un tour de pièce au LiDAR à des fichiers que tout logiciel ouvre</span><span class="zh">從 LiDAR 環繞掃描，到任何工具都能打開的檔案</span></h2>
+    <p class="lead"><span class="en">Apple's RoomPlan does the capture. 3D Scanner does everything Apple leaves out: dimensioned plans, CAD and 3D formats, a Mac viewer, iCloud sharing.</span><span class="fr">RoomPlan d'Apple fait la capture. 3D Scanner fait tout ce qu'Apple ne fournit pas : plans cotés, formats CAO et 3D, visualiseur Mac, partage iCloud.</span><span class="zh">Apple 的 RoomPlan 負責擷取。3D Scanner 補上 Apple 沒有提供的一切：帶尺寸的平面圖、CAD 與 3D 格式、Mac 檢視器、iCloud 分享。</span></p>
+  </div>
+  <div class="grid g3">
+    <div class="card"><div class="ico">📱</div><h3><span class="en">Guided LiDAR scan</span><span class="fr">Scan LiDAR guidé</span><span class="zh">引導式 LiDAR 掃描</span></h3><p><span class="en">Apple's RoomPlan capture screen: walls, doors, windows, openings and furniture detected as you walk. The room is named automatically — Living room, Bedroom, Kitchen…</span><span class="fr">L'écran de capture RoomPlan d'Apple : murs, portes, fenêtres, ouvertures et meubles détectés pendant que vous marchez. La pièce est nommée automatiquement — Salon, Chambre, Cuisine…</span><span class="zh">Apple 的 RoomPlan 擷取畫面：邊走邊偵測牆面、門、窗、開口與家具。房間自動命名——客廳、臥室、廚房……</span></p></div>
+    <div class="card"><div class="ico">📏</div><h3><span class="en">Dimensioned 2D plan</span><span class="fr">Plan 2D coté</span><span class="zh">帶尺寸的 2D 平面圖</span></h3><p><span class="en">Top-down plan with every wall length in centimetres, door and window widths, floor area in m², perimeter and ceiling height — with a confidence hint per element.</span><span class="fr">Vue de dessus avec la longueur de chaque mur en centimètres, la largeur des portes et fenêtres, la surface en m², le périmètre et la hauteur sous plafond — avec un indice de confiance par élément.</span><span class="zh">俯視平面圖，標出每面牆的長度（公分）、門窗寬度、地板面積（m²）、周長與天花板高度——每個元素附信心指標。</span></p></div>
+    <div class="card"><div class="ico">🧊</div><h3><span class="en">3D, 2D and AR viewer</span><span class="fr">Visualiseur 3D, 2D et AR</span><span class="zh">3D、2D 與 AR 檢視器</span></h3><p><span class="en">A RealityKit scene built from the plan itself: orbit the room in 3D, flip to the top-down 2D view, or place a 1:50 scale model on your table in AR — and overlay it 1:1 in the real room.</span><span class="fr">Une scène RealityKit construite depuis le plan : orbitez autour de la pièce en 3D, basculez en vue de dessus 2D, ou posez une maquette 1:50 sur votre table en AR — et superposez-la 1:1 dans la vraie pièce.</span><span class="zh">由平面圖直接建構的 RealityKit 場景：3D 環繞、切換至俯視 2D、或在 AR 中把 1:50 的模型放到桌上——再以 1:1 疊合到真實房間。</span></p></div>
+    <div class="card"><div class="ico">🖥️</div><h3><span class="en">Mac companion</span><span class="fr">Compagnon Mac</span><span class="zh">Mac 伴侶程式</span></h3><p><span class="en">Same code, native Mac app: your rooms appear in the sidebar via iCloud, with the plan, the 3D model and the measurements on the big screen. Export (⌘E), print (⌘P), drag &amp; drop into SketchUp, Blender or Illustrator.</span><span class="fr">Même code, app Mac native : vos pièces arrivent dans la barre latérale via iCloud, avec le plan, le modèle 3D et les mesures sur grand écran. Exportez (⌘E), imprimez (⌘P), glissez-déposez dans SketchUp, Blender ou Illustrator.</span><span class="zh">相同程式碼的原生 Mac 應用程式：房間透過 iCloud 出現在側欄，平面圖、3D 模型與尺寸在大螢幕上呈現。匯出（⌘E）、列印（⌘P）、拖放到 SketchUp、Blender 或 Illustrator。</span></p></div>
+    <div class="card"><div class="ico">☁️</div><h3><span class="en">iCloud Drive as the bridge</span><span class="fr">iCloud Drive comme passerelle</span><span class="zh">以 iCloud Drive 為橋樑</span></h3><p><span class="en">A public “3D Scanner” folder in Files and Finder. Rooms sync between iPhone and Mac; exports saved there are readable by any 2D/3D app on either device. Works offline, never loses a scan.</span><span class="fr">Un dossier public « 3D Scanner » dans Fichiers et le Finder. Les pièces se synchronisent entre iPhone et Mac ; les exports enregistrés là sont lisibles par toute app 2D/3D sur les deux appareils. Fonctionne hors ligne, ne perd jamais un scan.</span><span class="zh">在「檔案」與 Finder 中的公開「3D Scanner」資料夾。房間在 iPhone 與 Mac 間同步；存放於此的匯出檔可被任一裝置上的 2D／3D 應用程式讀取。可離線使用，絕不遺失掃描。</span></p></div>
+    <div class="card"><div class="ico">🏠</div><h3><span class="en">Whole house — next</span><span class="fr">Maison entière — à venir</span><span class="zh">整棟房屋——即將推出</span></h3><p><span class="en">The model already holds several rooms and storeys. Version 2 chains room scans in one session and merges them into a full house plan, with glTF export.</span><span class="fr">Le modèle contient déjà plusieurs pièces et niveaux. La version 2 enchaîne les scans dans une même session et les fusionne en plan de maison complet, avec export glTF.</span><span class="zh">資料模型已支援多個房間與樓層。第 2 版將在同一次掃描中串接多個房間，合併為完整的房屋平面圖，並支援 glTF 匯出。</span></p></div>
+  </div>
+  <div class="formats" aria-label="Export formats">
+    <span class="tag"><b>2D</b>PDF</span><span class="tag"><b>2D</b>PNG</span><span class="tag"><b>2D</b>SVG</span><span class="tag"><b>CAD</b>DXF R12</span>
+    <span class="tag"><b>3D</b>USDZ</span><span class="tag"><b>3D</b>OBJ</span><span class="tag"><b>3D</b>STL</span><span class="tag"><b>3D</b>PLY</span>
+    <span class="tag"><b>DATA</b>JSON</span><span class="tag"><b>ALL</b>ZIP</span>
+  </div>
+</div></section>
+
+<section id="flow"><div class="wrap">
+  <div class="center">
+    <p class="eyebrow"><span class="en">how it fits together</span><span class="fr">comment ça s'articule</span><span class="zh">整體流程</span></p>
+    <h2><span class="en">Scan on the iPhone, work on the Mac</span><span class="fr">Scannez sur l'iPhone, travaillez sur le Mac</span><span class="zh">用 iPhone 掃描，在 Mac 上工作</span></h2>
+  </div>
+  <div class="flow">
+    <div class="node"><span class="k">iPhone Pro · iOS 18</span><h3><span class="en">Scan &amp; measure</span><span class="fr">Scanner et mesurer</span><span class="zh">掃描與測量</span></h3><p><span class="en">RoomPlan capture, plan, 3D/AR viewer, every export, share sheet.</span><span class="fr">Capture RoomPlan, plan, visualiseur 3D/AR, tous les exports, feuille de partage.</span><span class="zh">RoomPlan 擷取、平面圖、3D／AR 檢視、全部匯出格式、分享表單。</span></p></div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="node"><span class="k">iCloud Drive / 3D Scanner</span><h3><span class="en">Sync &amp; share</span><span class="fr">Synchroniser et partager</span><span class="zh">同步與分享</span></h3><p><span class="en"><code>Rooms/*.roomscan</code> and <code>Exports/</code> — visible in Files and Finder, readable by any app.</span><span class="fr"><code>Rooms/*.roomscan</code> et <code>Exports/</code> — visibles dans Fichiers et le Finder, lisibles par toute app.</span><span class="zh"><code>Rooms/*.roomscan</code> 與 <code>Exports/</code>——在「檔案」與 Finder 中可見，任何應用程式皆可讀取。</span></p></div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="node"><span class="k">Mac · macOS 15</span><h3><span class="en">View, export, print</span><span class="fr">Visualiser, exporter, imprimer</span><span class="zh">檢視、匯出、列印</span></h3><p><span class="en">Sidebar library, 3D/2D viewer, measurements, ⌘E / ⌘P, drag &amp; drop, Open With…, Sparkle updates.</span><span class="fr">Bibliothèque en barre latérale, visualiseur 3D/2D, mesures, ⌘E / ⌘P, glisser-déposer, Ouvrir avec…, mises à jour Sparkle.</span><span class="zh">側欄資料庫、3D／2D 檢視器、尺寸、⌘E／⌘P、拖放、打開方式…、Sparkle 自動更新。</span></p></div>
+  </div>
+</div></section>
+
+<section id="status"><div class="wrap">
+  <div class="center">
+    <p class="eyebrow"><span class="en">build status</span><span class="fr">avancement</span><span class="zh">開發進度</span></p>
+    <h2><span class="en">Built in the open, phase by phase</span><span class="fr">Construit au grand jour, phase par phase</span><span class="zh">公開開發，逐階段推進</span></h2>
+  </div>
+  <div class="status">
+    <ol id="phases">
+      <li class="done"><span class="box">✓</span><span><span class="en">Design specification &amp; architecture</span><span class="fr">Spécification et architecture</span><span class="zh">設計規格與架構</span></span></li>
+      <li class="now"><span class="box"></span><span><span class="en">Project bootstrap — iOS 18 + macOS 15 targets, iCloud, Sparkle</span><span class="fr">Amorçage — cibles iOS 18 + macOS 15, iCloud, Sparkle</span><span class="zh">專案建置——iOS 18 + macOS 15 目標、iCloud、Sparkle</span></span></li>
+      <li><span class="box"></span><span><span class="en">Domain model &amp; measurements (tested from real scans)</span><span class="fr">Modèle et mesures (testés sur de vrais scans)</span><span class="zh">資料模型與測量（以真實掃描測試）</span></span></li>
+      <li><span class="box"></span><span><span class="en">Scan screen, 2D renderer, RealityKit viewer</span><span class="fr">Écran de scan, rendu 2D, visualiseur RealityKit</span><span class="zh">掃描畫面、2D 渲染、RealityKit 檢視器</span></span></li>
+      <li><span class="box"></span><span><span class="en">Exports — PDF, PNG, SVG, DXF, USDZ, OBJ, STL, PLY, ZIP</span><span class="fr">Exports — PDF, PNG, SVG, DXF, USDZ, OBJ, STL, PLY, ZIP</span><span class="zh">匯出——PDF、PNG、SVG、DXF、USDZ、OBJ、STL、PLY、ZIP</span></span></li>
+      <li><span class="box"></span><span><span class="en">iCloud Drive sync &amp; Mac companion app</span><span class="fr">Synchronisation iCloud Drive et app Mac</span><span class="zh">iCloud Drive 同步與 Mac 伴侶程式</span></span></li>
+      <li><span class="box"></span><span><span class="en">Release 1.0 — signed, notarized DMG with auto-update</span><span class="fr">Version 1.0 — DMG signé, notarié, avec mise à jour automatique</span><span class="zh">1.0 版——已簽章、已公證的 DMG，支援自動更新</span></span></li>
+    </ol>
+    <p class="note"><span class="en"><b>Not released yet.</b> The source is public from the first commit; each phase lands as a pull request on <a href="https://github.com/vincentlauriat/3DScanner">GitHub</a>. The Mac app will ship as a signed, notarized DMG with Sparkle updates; the iPhone app is installed from Xcode.</span><span class="fr"><b>Pas encore publiée.</b> Le code est public depuis le premier commit ; chaque phase arrive en pull request sur <a href="https://github.com/vincentlauriat/3DScanner">GitHub</a>. L'app Mac sera livrée en DMG signé et notarié avec mises à jour Sparkle ; l'app iPhone s'installe depuis Xcode.</span><span class="zh"><b>尚未發布。</b>原始碼自第一個提交起即公開；每個階段以 pull request 形式合併至 <a href="https://github.com/vincentlauriat/3DScanner">GitHub</a>。Mac 版將以已簽章、已公證的 DMG 發布並支援 Sparkle 更新；iPhone 版從 Xcode 安裝。</span></p>
+  </div>
+</div></section>
+
+<section class="final"><div class="wrap">
+  <p class="eyebrow"><span class="en">follow along</span><span class="fr">suivre le projet</span><span class="zh">追蹤進展</span></p>
+  <h2><span class="en">Your house, measured by your phone</span><span class="fr">Votre maison, mesurée par votre téléphone</span><span class="zh">用手機，量出你的家</span></h2>
+  <p class="lead" style="margin:0 auto 6px"><span class="en">Free, open-source, native. iPhone Pro with LiDAR, iOS 18 · macOS 15 Sequoia or later.</span><span class="fr">Gratuit, open source, natif. iPhone Pro avec LiDAR, iOS 18 · macOS 15 Sequoia ou ultérieur.</span><span class="zh">免費、開源、原生。配備 LiDAR 的 iPhone Pro，iOS 18 · macOS 15 Sequoia 或以上。</span></p>
+  <div class="cta">
+    <a class="btn btn-primary" href="https://github.com/vincentlauriat/3DScanner"><span class="en">Star on GitHub</span><span class="fr">Suivre sur GitHub</span><span class="zh">在 GitHub 上加星</span></a>
+    <a class="btn btn-ghost" href="https://github.com/vincentlauriat/3DScanner#readme"><span class="en">Read the docs</span><span class="fr">Lire la doc</span><span class="zh">閱讀說明文件</span></a>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  3D Scanner · <span class="en">MIT License</span><span class="fr">Licence MIT</span><span class="zh">MIT 授權</span> · © 2026 Vincent Lauriat ·
+  <a href="https://github.com/vincentlauriat/3DScanner">github.com/vincentlauriat/3DScanner</a>
+  · <a href="https://vincentlauriat.github.io">vincentlauriat.github.io</a>
+</div></footer>
+
+<script>
+  /* zh-Hant et non zh : sur un système en chinois simplifié, un simple `zh`
+     laisse le navigateur choisir une fonte Han simplifiée. */
+  var LANG_TAG={en:'en',fr:'fr',zh:'zh-Hant'};
+  function setLang(l){
+    if(!LANG_TAG[l]) l='en';
+    document.body.classList.remove('lang-en','lang-fr','lang-zh');
+    document.body.classList.add('lang-'+l);
+    document.documentElement.lang=LANG_TAG[l];
+    document.querySelectorAll('.langtog button').forEach(function(b){
+      var on=b.dataset.lang===l;
+      b.classList.toggle('on',on);
+      b.setAttribute('aria-pressed',on?'true':'false');
+    });
+    try{localStorage.setItem('vl-lang',l)}catch(e){}
+  }
+  (function(){
+    var saved;try{saved=localStorage.getItem('vl-lang')}catch(e){}
+    var n=(navigator.language||'en').slice(0,2).toLowerCase();
+    setLang(saved||(n==='zh'?'zh':(n==='fr'?'fr':'en')));
+  })();
+</script>
+</body>
+</html>

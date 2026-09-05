@@ -1,0 +1,211 @@
+name: RoomScanner
+options:
+  bundleIdPrefix: fr.vincentlauriat
+  deploymentTarget:
+    iOS: "18.0"
+    macOS: "15.0"
+  generateEmptyDirectories: true
+
+# Sparkle : auto-update de l'app macOS uniquement (pas de distribution directe
+# hors App Store sur iOS). Seule dépendance SPM du projet (spec D10/D18).
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.9.1"
+
+# Schemes explicites (sinon xcodegen n'en génère pas → schemes perdus à chaque
+# régénération). Un scheme par plateforme, chacun avec sa cible de tests.
+schemes:
+  RoomScanner:
+    build:
+      targets:
+        RoomScanner: all
+    test:
+      targets:
+        - RoomScannerTests
+    run:
+      config: Debug
+  RoomScannerMac:
+    build:
+      targets:
+        RoomScannerMac: all
+    test:
+      targets:
+        - RoomScannerMacTests
+    run:
+      config: Debug
+
+# Réglages communs aux deux apps (même bundle id iOS/macOS, comme TheNews).
+settingGroups:
+  app-common:
+    PRODUCT_NAME: 3DScanner
+    PRODUCT_MODULE_NAME: RoomScanner
+    PRODUCT_BUNDLE_IDENTIFIER: fr.vincentlauriat.roomscanner
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: KFLACS69T9
+    SWIFT_STRICT_CONCURRENCY: minimal
+  tests-common:
+    SWIFT_VERSION: "5.9"
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: KFLACS69T9
+
+targets:
+  # ---------------------------------------------------------------------------
+  # iOS — scan RoomPlan + visualisation + exports + iCloud
+  # ---------------------------------------------------------------------------
+  RoomScanner:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: RoomScanner
+        excludes:
+          - "**/*.entitlements"
+          - "Info*.plist"
+          - "MacUI/**"
+    settings:
+      groups: [app-common]
+      base:
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_ENTITLEMENTS: RoomScanner/RoomScanner-iOS.entitlements
+    info:
+      path: RoomScanner/Info-iOS.plist
+      properties:
+        CFBundleName: 3DScanner
+        CFBundleDisplayName: 3D Scanner
+        CFBundleIdentifier: fr.vincentlauriat.roomscanner
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # RoomPlan a besoin de la caméra et d'ARKit (LiDAR).
+        NSCameraUsageDescription: "3D Scanner utilise la caméra et le LiDAR pour scanner la pièce."
+        UIRequiredDeviceCapabilities:
+          - arkit
+        # Dossier local de repli visible dans Fichiers (quand iCloud est inactif).
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        # Conteneur iCloud Drive exposé comme dossier public « 3D Scanner » dans Fichiers.
+        NSUbiquitousContainers:
+          iCloud.fr.vincentlauriat.roomscanner:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: "3D Scanner"
+            NSUbiquitousContainerSupportedFolderLevels: Any
+        # Paquet .roomscan : un scan complet vu comme un seul fichier.
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: fr.vincentlauriat.roomscanner.room
+            UTTypeDescription: 3D Scanner room scan
+            UTTypeConformsTo: [com.apple.package]
+            UTTypeTagSpecification:
+              public.filename-extension: [roomscan]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: 3D Scanner room scan
+            LSHandlerRank: Owner
+            LSItemContentTypes: [fr.vincentlauriat.roomscanner.room]
+
+  RoomScannerTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: RoomScannerTests
+    settings:
+      groups: [tests-common]
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.vincentlauriat.roomscanner.tests
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/3DScanner.app/3DScanner"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    dependencies:
+      - target: RoomScanner
+
+  # ---------------------------------------------------------------------------
+  # macOS — visualisation, mesures, exports, impression, iCloud, Sparkle
+  # (pas de scan : RoomPlan n'existe pas sur macOS)
+  # ---------------------------------------------------------------------------
+  RoomScannerMac:
+    type: application
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: RoomScanner
+        excludes:
+          - "**/*.entitlements"
+          - "Info*.plist"
+          - "Scan/**"
+          - "Viewer/ARPlacementController.swift"
+    settings:
+      groups: [app-common]
+      base:
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        CODE_SIGN_ENTITLEMENTS: RoomScanner/RoomScanner-macOS.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+    dependencies:
+      - package: Sparkle
+    info:
+      path: RoomScanner/Info-macOS.plist
+      properties:
+        CFBundleName: 3DScanner
+        CFBundleDisplayName: 3D Scanner
+        CFBundleIdentifier: fr.vincentlauriat.roomscanner
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSMinimumSystemVersion: "15.0"
+        NSHumanReadableCopyright: "© 2026 Vincent Lauriat"
+        LSApplicationCategoryType: public.app-category.graphics-design
+        # Sparkle (auto-update). SUPublicEDKey est ajoutée en phase 10 lors de la
+        # génération UNIQUE de la clé EdDSA (compte trousseau « RoomScanner ») —
+        # ne jamais la régénérer ensuite (voir l'avertissement de Scripts/release.sh).
+        SUFeedURL: "https://raw.githubusercontent.com/vincentlauriat/3DScanner/main/appcast.xml"
+        SUEnableAutomaticChecks: true
+        SUScheduledCheckInterval: 86400
+        SUAutomaticallyUpdate: false
+        # App sandboxée (exigé par iCloud) : l'installateur Sparkle passe par son XPC.
+        SUEnableInstallerLauncherService: true
+        NSUbiquitousContainers:
+          iCloud.fr.vincentlauriat.roomscanner:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: "3D Scanner"
+            NSUbiquitousContainerSupportedFolderLevels: Any
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: fr.vincentlauriat.roomscanner.room
+            UTTypeDescription: 3D Scanner room scan
+            UTTypeConformsTo: [com.apple.package]
+            UTTypeTagSpecification:
+              public.filename-extension: [roomscan]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: 3D Scanner room scan
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            LSItemContentTypes: [fr.vincentlauriat.roomscanner.room]
+
+  RoomScannerMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: RoomScannerTests
+    settings:
+      groups: [tests-common]
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.vincentlauriat.roomscanner.mactests
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/3DScanner.app/Contents/MacOS/3DScanner"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    dependencies:
+      - target: RoomScannerMac
