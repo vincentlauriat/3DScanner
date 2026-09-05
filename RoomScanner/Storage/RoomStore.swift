@@ -46,6 +46,14 @@ final class RoomStore {
         switchLocation(to: cloud)
     }
 
+    /// Réglage « Utiliser iCloud Drive » : bascule immédiate. Désactiver revient au dossier local
+    /// (les fichiers iCloud restent dans iCloud Drive, rien n'est déplacé ni supprimé).
+    func setCloudEnabled(_ enabled: Bool) async {
+        UserDefaults.standard.set(enabled, forKey: CloudAvailability.preferenceKey)
+        if enabled { await activateCloudIfAvailable() }
+        else if isCloud { switchLocation(to: .local()) }
+    }
+
     /// Change de racine (iCloud ↔ local), recharge, (re)démarre l'observation.
     func switchLocation(to newLocation: StorageLocation) {
         monitor?.stop(); monitor = nil

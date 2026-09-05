@@ -4,8 +4,9 @@ import AppKit
 /// Fenêtre Mac : barre latérale des pièces (recherche, badge iCloud, glisser du paquet)
 /// et détail à onglets ; exécute les actions des menus (export, impression, Finder, import).
 struct MacRootView: View {
-    @State private var store = RoomStore(location: RootView.initialLocation(), allowsCloud: !RootView.hasForcedRoot)
+    @Environment(RoomStore.self) private var store
     @State private var appState = MacAppState()
+    @State private var pendingDeletion: RoomRecord?
     @State private var search = ""
     @State private var exportSheet: ExportRequest?
     @State private var errorMessage: String?
@@ -28,7 +29,7 @@ struct MacRootView: View {
                             Button("mac.menu.export") { appState.request(.export(nil)) }
                             Button("mac.menu.revealInFinder") { NSWorkspace.shared.activateFileViewerSelecting([store.packageURL(for: record)]) }
                             Divider()
-                            Button("common.delete", role: .destructive) { try? store.delete(record); if appState.selected == record { appState.selected = nil } }
+                            Button("common.delete", role: .destructive) { pendingDeletion = record }
                         }
                 }
             }
@@ -44,8 +45,13 @@ struct MacRootView: View {
                 MacEmptyStateView { importPackage() }
             }
         }
-        .environment(store)
         .focusedSceneValue(\.macAppState, appState)
+        .confirmationDialog("list.delete.confirm \(pendingDeletion?.name ?? "")", isPresented: Binding(get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } }), titleVisibility: .visible) {
+            Button("common.delete", role: .destructive) {
+                if let r = pendingDeletion { try? store.delete(r); if appState.selected?.id == r.id { appState.selected = nil } }
+                pendingDeletion = nil
+            }
+        } message: { Text("list.delete.message") }
         .navigationTitle(Text("app.name"))
         .task { await store.activateCloudIfAvailable(); autoSelect() }
         .onChange(of: store.records) { _, _ in
