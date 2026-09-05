@@ -85,4 +85,28 @@ final class PlanSceneBuilderTests: XCTestCase {
         let img = try XCTUnwrap(PlanRenderer().floorTextureImage(House(room: p), bounds: p.bounds, pixelsPerMeter: 100))
         XCTAssertEqual(img.width, 400); XCTAssertEqual(img.height, 300)
     }
+
+    func testZenithLabelsLieFlatWithoutBillboard() throws {
+        let plan = FloorPlanBuilder().build(from: SyntheticRooms.rectangularRoom().scan, name: "Salon")
+        var b = PlanSceneBuilder(); b.options.showDimensions = true; b.options.flattenWalls = true
+        let root = b.makeScene(for: House(room: plan))
+        let dims = try XCTUnwrap(root.children[0].children.first { $0.name == "dimensions" })
+        XCTAssertEqual(dims.children.count, 4)
+        for label in dims.children {
+            XCTAssertNil(label.components[BillboardComponent.self], "à plat, pas de billboard en vue zénithale")
+            // Face du texte vers le haut : la normale locale +z devient +y.
+            let up = label.orientation.act(SIMD3<Float>(0, 0, 1))
+            XCTAssertEqual(up.y, 1, accuracy: 1e-4)
+            XCTAssertLessThan(label.position.y, 0.1, "posé sur le sol aplati")
+        }
+        // Le libellé du mur sud (y = −1.5 → z = +1.5) est décalé vers l'extérieur (z > 1.5).
+        XCTAssertTrue(dims.children.contains { $0.position.z > 1.6 && abs($0.position.x) < 0.01 })
+        // Texte lisible : la direction de lecture (+x local) ne pointe jamais vers −x.
+        for label in dims.children { XCTAssertGreaterThanOrEqual(label.orientation.act(SIMD3<Float>(1, 0, 0)).x, -1e-4) }
+
+        var b3 = PlanSceneBuilder(); b3.options.showDimensions = true
+        let root3 = b3.makeScene(for: House(room: plan))
+        let dims3 = try XCTUnwrap(root3.children[0].children.first { $0.name == "dimensions" })
+        XCTAssertTrue(dims3.children.allSatisfy { $0.components[BillboardComponent.self] != nil }, "billboard en 3D")
+    }
 }
