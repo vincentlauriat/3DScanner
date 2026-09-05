@@ -1,0 +1,20 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "app.name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "3D Scanner" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "3D Scanner" } }
+      }
+    },
+    "root.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scan a room with your iPhone. Plans and 3D models will appear here." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Scannez une pièce avec votre iPhone. Les plans et modèles 3D apparaîtront ici." } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
