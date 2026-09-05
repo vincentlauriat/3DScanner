@@ -16,6 +16,26 @@ struct HousePackage {
 
     typealias F = FileLayout.HousePackageFile
 
+    /// Captures brutes d'une pièce (Apple `room.json`, USDZ paramétrique, maillage), à imbriquer.
+    struct RoomExtras { var capturedRoomData: Data?; var usdzData: Data?; var usdzMeshData: Data? }
+
+    /// Assemble un paquet complet depuis une structure neutre : la maison est construite par
+    /// `HouseBuilder`, chaque pièce reçoit son `.roomscan` (plan, scan, captures brutes, vignette).
+    static func assemble(structure: StructureInput, name: String, capturedStructureData: Data?, usdzData: Data?,
+                         roomExtras: [UUID: RoomExtras] = [:], createdAt: Date = Date()) -> HousePackage {
+        let house = HouseBuilder().build(from: structure, name: name)
+        let rooms = house.allRooms.map { plan -> RoomPackage in
+            let extras = roomExtras[plan.id]
+            return RoomPackage(record: RoomRecord(plan: plan, createdAt: createdAt), plan: plan,
+                               scan: structure.rooms.first { $0.id == plan.id },
+                               capturedRoomData: extras?.capturedRoomData, usdzData: extras?.usdzData, usdzMeshData: extras?.usdzMeshData,
+                               thumbnailPNG: PlanRenderer.thumbnailPNG(for: plan))
+        }
+        return HousePackage(record: HouseRecord(house: house, createdAt: createdAt), house: house, structure: structure,
+                            capturedStructureData: capturedStructureData, rooms: rooms, usdzData: usdzData,
+                            thumbnailPNG: PlanRenderer.thumbnailPNG(for: house))
+    }
+
     func write(to packageURL: URL, fileManager fm: FileManager = .default) throws {
         let staging = fm.temporaryDirectory.appendingPathComponent("housescan-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: staging.appendingPathComponent(F.rooms, isDirectory: true), withIntermediateDirectories: true)

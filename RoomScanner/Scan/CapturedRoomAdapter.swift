@@ -19,7 +19,7 @@ enum CapturedRoomAdapter {
         return ScanInput(id: room.identifier, story: room.story, sectionLabels: labels, surfaces: surfaces, objects: objects)
     }
 
-    private static func surface(_ s: CapturedRoom.Surface, _ category: ScanSurface.Category) -> ScanSurface {
+    static func surface(_ s: CapturedRoom.Surface, _ category: ScanSurface.Category) -> ScanSurface {
         ScanSurface(id: s.identifier, category: category, dimensions: s.dimensions, transform: s.transform,
                     confidence: confidence(s.confidence), parentID: s.parentIdentifier, polygonCorners: s.polygonCorners)
     }

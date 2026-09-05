@@ -37,7 +37,7 @@ unit-tested on the simulator from JSON fixtures; the scan screen is tested on de
 | **Mac companion app**: sidebar library, 2D plan, 3D viewer (mouse/trackpad orbit), measurements, File › Export (⌘E), Print (⌘P), drag & drop to other apps, Open With…, Reveal in Finder, double-click `.roomscan` | ✅ built (visual check pending) | shared codebase, `RoomScannerMac` target |
 | **Sparkle auto-update** on Mac (signed DMG, notarized) | ✅ integrated · first release pending | `appcast.xml` on `main` |
 | French / English UI | ✅ built | |
-| Whole-house merge (multi-room, multi-story) | 🚧 v2 | `.housescan` package, house library, level picker, house exports done; multi-room capture (RoomPlan `StructureBuilder`) next |
+| Whole-house merge (multi-room, multi-story) | 🚧 v2 | "Scan a house" mode (shared `ARSession`, RoomPlan `StructureBuilder`), `.housescan` package, house library, level picker, house exports — awaiting real-house validation |
 | glTF / GLB export | 🔜 v2 | Model I/O cannot write glTF; custom writer |
 | Compass / north on plan, imperial units, manual edits | 🔜 v2 | |
 
@@ -82,7 +82,7 @@ See [`ARCHITECTURE_EN.md`](ARCHITECTURE_EN.md) (English, source of truth) / [`AR
 - [x] Phase 8 — Mac companion app (split view, menus, print, drag & drop, Open With)
 - [x] Phase 9 — Library, ZIP, settings, icons, localization, Sparkle integration
 - [ ] Phase 10 — v1.0.0 release (iOS + notarized Mac DMG with Sparkle appcast) — release script and Sparkle key ready, publication pending
-- [ ] v2 — whole-house merge ([spec](docs/superpowers/specs/2026-09-05-3dscanner-v2-house-design.md)): domain ✅, `.housescan` storage + library ✅, multi-room capture 🚧, house viewer/exports polish, glTF, compass, imperial units
+- [ ] v2 — whole-house merge ([spec](docs/superpowers/specs/2026-09-05-3dscanner-v2-house-design.md)): domain ✅, `.housescan` storage + library ✅, multi-room capture ✅ (device validation pending), house viewer/exports polish, glTF, compass, imperial units
 
 ## License
 
