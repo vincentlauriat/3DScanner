@@ -124,10 +124,14 @@ struct HouseMeasuresView: View {
     var body: some View {
         let hm = HouseMeasurements(house: house)
         List {
+            // La surface de la maison est l'union des pièces d'un même niveau : elle est plus
+            // petite que la somme des pièces listées plus bas (les mitoyennes se recouvrent).
+            // Le libellé et la note l'expliquent pour que les deux chiffres se lisent ensemble.
             Section("measures.summary") {
-                row(Text("measures.area"), MeasurementFormat.squareMeters(hm.floorArea))
+                row(Text("house.area"), MeasurementFormat.squareMeters(hm.floorArea))
                 row(Text("house.rooms"), "\(hm.roomCount)")
                 row(Text("house.stories"), "\(hm.storyCount)")
+                Text("house.area.footnote").font(.footnote).foregroundStyle(.secondary)
             }
             ForEach(house.stories, id: \.index) { story in
                 Section(StoryNaming.localizedName(for: story.index)) {

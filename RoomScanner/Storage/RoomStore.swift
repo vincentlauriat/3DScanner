@@ -25,6 +25,9 @@ final class RoomStore {
     /// Paquets dont la résolution de conflit a échoué : on ne retente pas à chaque lot du moniteur.
     @ObservationIgnored private var failedConflictResolutions: Set<URL> = []
     @ObservationIgnored private var isResolvingConflicts = false
+    /// Maisons déjà passées par la montée de schéma : un paquet sans `structure.json`
+    /// ne peut pas être migré, inutile de le relire à chaque `reload()`.
+    @ObservationIgnored private var migratedHouses: Set<UUID> = []
 
     init(location: StorageLocation, allowsCloud: Bool = true) {
         self.location = location
@@ -210,6 +213,14 @@ final class RoomStore {
                 .filter { $0.pathExtension == FileLayout.housePackageExtension }
             houseRecords = houseURLs.compactMap { try? HousePackage.readRecord(from: $0) }
                 .sorted { $0.createdAt > $1.createdAt }
+            // Montée de schéma : une maison enregistrée par une version antérieure garde dans son
+            // `meta.json` une surface et des noms périmés (schéma 2 : union des pièces, noms
+            // composés). On la recalcule une fois ici, sinon la bibliothèque afficherait l'ancienne
+            // surface jusqu'à ce que la maison soit ouverte.
+            for record in houseRecords where record.schemaVersion < FloorPlan.schemaVersion && !migratedHouses.contains(record.id) {
+                migratedHouses.insert(record.id)
+                _ = try? house(for: record)
+            }
             lastError = nil
         } catch {
             lastError = .storageFailed(error.localizedDescription)
@@ -299,23 +310,29 @@ final class RoomStore {
     }
 
     /// Maison d'un paquet. Quand `structure.json` est présent, la maison est **recalculée** par le
-    /// Domain courant (noms des pièces conservés depuis `house.json`) et le paquet rafraîchi si
-    /// elle diffère ; sinon `house.json` fait foi.
+    /// Domain courant et le paquet rafraîchi si la maison, sa surface ou sa version de schéma
+    /// diffèrent ; sinon `house.json` fait foi.
+    ///
+    /// Les noms de pièces enregistrés sont conservés — ils peuvent avoir été saisis à la main.
+    /// Exception : à une montée de version de schéma, les noms d'une version antérieure sont
+    /// considérés comme automatiques et recalculés (schéma 2 : noms composés depuis toutes les
+    /// sections RoomPlan, « Salle à manger / Cuisine »).
     func house(for record: HouseRecord) throws -> House {
         let url = packageURL(for: record)
         let stored = try HousePackage.readHouse(from: url)
         guard let structure = try? HousePackage.readStructure(from: url) else { return stored }
         var rebuilt = HouseBuilder().build(from: structure, name: record.name)
         rebuilt.id = stored.id
-        let storedNames = Dictionary(stored.allRooms.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
-        for s in rebuilt.stories.indices {
-            for r in rebuilt.stories[s].rooms.indices {
-                if let n = storedNames[rebuilt.stories[s].rooms[r].id] { rebuilt.stories[s].rooms[r].name = n }
+        if record.schemaVersion >= FloorPlan.schemaVersion {
+            let storedNames = Dictionary(stored.allRooms.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
+            for s in rebuilt.stories.indices {
+                for r in rebuilt.stories[s].rooms.indices {
+                    if let n = storedNames[rebuilt.stories[s].rooms[r].id] { rebuilt.stories[s].rooms[r].name = n }
+                }
             }
         }
-        if rebuilt != stored {
-            var updated = HouseRecord(house: rebuilt, createdAt: record.createdAt)
-            updated.schemaVersion = record.schemaVersion
+        let updated = HouseRecord(house: rebuilt, createdAt: record.createdAt)
+        if rebuilt != stored || updated.areaM2 != record.areaM2 || updated.schemaVersion != record.schemaVersion {
             try? HousePackage.update(record: updated, house: rebuilt, in: url)
             if let png = PlanRenderer.thumbnailPNG(for: rebuilt) { try? HousePackage.writeThumbnail(png, in: url) }
             if let i = houseRecords.firstIndex(where: { $0.id == record.id }) { houseRecords[i] = updated }

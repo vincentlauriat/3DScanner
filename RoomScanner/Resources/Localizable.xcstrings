@@ -1376,6 +1376,40 @@
         }
       }
     },
+    "house.area": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Floor area (rooms merged)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Surface au sol (pièces fusionnées)"
+          }
+        }
+      }
+    },
+    "house.area.footnote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adjacent rooms overlap slightly, so the house area is smaller than the sum of the rooms below."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les pièces mitoyennes se recouvrent légèrement : la surface de la maison est inférieure à la somme des pièces ci-dessous."
+          }
+        }
+      }
+    },
     "house.defaultName": {
       "localizations": {
         "en": {

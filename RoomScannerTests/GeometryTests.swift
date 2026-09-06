@@ -73,4 +73,59 @@ final class GeometryTests: XCTestCase {
         let r = Polygon2D.triangulation(flat)
         XCTAssertFalse(r.complete); XCTAssertTrue(r.triangles.isEmpty)
     }
+
+    // MARK: - Union et intersection de polygones (surface d'une maison)
+
+    private func rect(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double) -> [Point2D] {
+        [Point2D(x: x0, y: y0), Point2D(x: x1, y: y0), Point2D(x: x1, y: y1), Point2D(x: x0, y: y1)]
+    }
+
+    func testUnionOfDisjointPolygonsIsTheSum() {
+        let a = rect(0, 0, 1, 1), b = rect(2, 0, 3, 1)
+        XCTAssertEqual(Polygon2D.unionArea([a, b]), 2, accuracy: 1e-9)
+        XCTAssertEqual(Polygon2D.intersectionArea([a, b]), 0, accuracy: 1e-9)
+    }
+
+    func testUnionOfIdenticalPolygonsIsOneOfThem() {
+        let a = rect(0, 0, 2, 3)
+        XCTAssertEqual(Polygon2D.unionArea([a, a, a]), 6, accuracy: 1e-9)
+        XCTAssertEqual(Polygon2D.intersectionArea([a, a]), 6, accuracy: 1e-9)
+    }
+
+    func testUnionSubtractsThePairwiseOverlap() {
+        // [0,1]² et [0.5,1.5]×[0,1] : recouvrement de 0,5.
+        let a = rect(0, 0, 1, 1), b = rect(0.5, 0, 1.5, 1)
+        XCTAssertEqual(Polygon2D.intersectionArea([a, b]), 0.5, accuracy: 1e-9)
+        XCTAssertEqual(Polygon2D.unionArea([a, b]), 1.5, accuracy: 1e-9)
+    }
+
+    /// Cas qui distingue l'inclusion–exclusion complète d'une simple soustraction des
+    /// recouvrements deux à deux : trois carrés partageant une même zone. Somme 3,
+    /// recouvrements deux à deux 0,5 + 0,5 + 0,25, zone triple 0,25 ⇒ union = 2.
+    /// Une implémentation qui s'arrêterait aux paires répondrait 1,75.
+    func testUnionHandlesARegionSharedByThreePolygons() {
+        let a = rect(0, 0, 1, 1), b = rect(0.5, 0, 1.5, 1), c = rect(0, 0.5, 1, 1.5)
+        XCTAssertEqual(Polygon2D.intersectionArea([a, b, c]), 0.25, accuracy: 1e-9)
+        XCTAssertEqual(Polygon2D.unionArea([a, b, c]), 2, accuracy: 1e-9)
+    }
+
+    func testUnionOfConcavePolygons() {
+        // L renversé : [0,2]×[0,1] ∪ [0,1]×[0,2] décrit d'un seul tenant (aire 3),
+        // uni avec le carré manquant [1,2]×[1,2] ⇒ le carré plein 2×2.
+        let l = [Point2D(x: 0, y: 0), Point2D(x: 2, y: 0), Point2D(x: 2, y: 1),
+                 Point2D(x: 1, y: 1), Point2D(x: 1, y: 2), Point2D(x: 0, y: 2)]
+        XCTAssertEqual(Polygon2D.area(l), 3, accuracy: 1e-9)
+        XCTAssertEqual(Polygon2D.unionArea([l, rect(1, 1, 2, 2)]), 4, accuracy: 1e-9)
+    }
+
+    func testUnionIgnoresDegeneratePolygons() {
+        let a = rect(0, 0, 1, 1)
+        XCTAssertEqual(Polygon2D.unionArea([a, [], [Point2D(x: 5, y: 5), Point2D(x: 6, y: 6)]]), 1, accuracy: 1e-9)
+        XCTAssertEqual(Polygon2D.unionArea([]), 0)
+    }
+
+    func testClipByConvexKeepsTheCommonPart() {
+        let clipped = Polygon2D.clip(rect(0, 0, 2, 2), byConvex: rect(1, 1, 3, 3))
+        XCTAssertEqual(Polygon2D.area(clipped), 1, accuracy: 1e-9)
+    }
 }
