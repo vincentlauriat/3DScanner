@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>3D Scanner</title>
+    <link>https://raw.githubusercontent.com/vincentlauriat/3DScanner/main/appcast.xml</link>
+    <description>3D Scanner for Mac release feed</description>
+    <language>en</language>
+    <item>
+      <title>v1.0.0</title>
+      <pubDate>Thu, 10 Sep 2026 16:07:19 +0200</pubDate>
+      <sparkle:version>1</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>https://github.com/vincentlauriat/3DScanner/releases/tag/v1.0.0</sparkle:releaseNotesLink>
+      <enclosure
+        url="https://github.com/vincentlauriat/3DScanner/releases/download/v1.0.0/3DScanner-1.0.0.dmg"
+        type="application/octet-stream"
+        sparkle:edSignature="E6Tvx/WKUaKyXvjc/dmm4PSmc6BSk6X0mDnJQwVbbV8jhh2kLmaxvEOxF3tkj24HxmZb16r8lfeIM29HaK8BCQ==" length="3321765" />
+    </item>
+  </channel>
+</rss>

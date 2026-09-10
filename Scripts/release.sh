@@ -48,6 +48,19 @@ if ! grep -q "MARKETING_VERSION: \"$VERSION\"" project.yml; then
 fi
 [ -f "$ROOT/release/release-notes-$VERSION.md" ] || { echo "✗ release/release-notes-$VERSION.md manquant" >&2; exit 1; }
 
+# 1b. Sparkle compare CFBundleVersion (<sparkle:version>), pas la version marketing :
+# un build number non incrémenté = mise à jour jamais proposée, sans erreur visible.
+BUILD_NUMBER_YML=$(python3 -c 'import re,sys; m=re.search(r"CURRENT_PROJECT_VERSION:\s*\"?([0-9]+)\"?", open("project.yml").read()); print(m.group(1) if m else "")')
+[ -n "$BUILD_NUMBER_YML" ] || { echo "✗ CURRENT_PROJECT_VERSION illisible dans project.yml" >&2; exit 1; }
+if [ -f "$ROOT/appcast.xml" ]; then
+  PREV_BUILD=$(python3 -c 'import re; s=open("appcast.xml").read(); v=[int(x) for x in re.findall(r"<sparkle:version>(\d+)</sparkle:version>", s)]; print(max(v) if v else 0)')
+  if [ "$BUILD_NUMBER_YML" -le "$PREV_BUILD" ]; then
+    echo "✗ CURRENT_PROJECT_VERSION=$BUILD_NUMBER_YML ≤ build $PREV_BUILD déjà publié dans appcast.xml." >&2
+    echo "  Sparkle ne proposerait aucune mise à jour. Incrémenter CURRENT_PROJECT_VERSION dans project.yml." >&2
+    exit 1
+  fi
+fi
+
 # 2. Projet + build Release (signature manuelle ensuite, cf. xattrs com.apple.provenance)
 command -v xcodegen >/dev/null || { echo "✗ xcodegen manquant (brew install xcodegen)" >&2; exit 1; }
 echo "→ xcodegen generate"; xcodegen generate >/dev/null
@@ -91,8 +104,28 @@ BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Content
 RESOLVED_ENTITLEMENTS="$STAGING_DIR/entitlements.plist"
 sed "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/$BUNDLE_ID/g" "$ENTITLEMENTS" > "$RESOLVED_ENTITLEMENTS"
 grep -q '\$(' "$RESOLVED_ENTITLEMENTS" && { echo "✗ variable non substituée dans les entitlements" >&2; exit 1; }
+# Xcode injecte `application-identifier` et `team-identifier` quand il signe avec un profil ;
+# `codesign` en ligne de commande ne le fait pas. Sans elles, le système ne relie pas l'app au
+# profil embarqué : l'entitlement iCloud n'est pas honoré, `url(forUbiquityContainerIdentifier:)`
+# renvoie nil et l'app se replie silencieusement sur le stockage local (bibliothèque vide).
+# Les valeurs sont lues DANS le profil pour ne jamais diverger de lui.
+if [ -n "${PROVISIONING_PROFILE:-}" ]; then
+  security cms -D -i "$PROVISIONING_PROFILE" > "$STAGING_DIR/profile.plist" 2>/dev/null
+  APP_ID=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.application-identifier" "$STAGING_DIR/profile.plist" 2>/dev/null || true)
+  TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.developer.team-identifier" "$STAGING_DIR/profile.plist" 2>/dev/null || true)
+  [ -n "$APP_ID" ] && [ -n "$TEAM_ID" ] || { echo "✗ application-identifier / team-identifier illisibles dans le profil" >&2; exit 1; }
+  [ "$APP_ID" = "$TEAM_ID.$BUNDLE_ID" ] || { echo "✗ le profil vise $APP_ID, l'app est $BUNDLE_ID" >&2; exit 1; }
+  /usr/libexec/PlistBuddy -c "Add :com.apple.application-identifier string $APP_ID" "$RESOLVED_ENTITLEMENTS" >/dev/null
+  /usr/libexec/PlistBuddy -c "Add :com.apple.developer.team-identifier string $TEAM_ID" "$RESOLVED_ENTITLEMENTS" >/dev/null
+  echo "→ application-identifier $APP_ID injecté depuis le profil"
+fi
 codesign_ts "$STAGING" --entitlements "$RESOLVED_ENTITLEMENTS"
-codesign -d --entitlements - "$STAGING" 2>/dev/null | grep -q "$BUNDLE_ID-spks" || { echo "✗ exception mach-lookup Sparkle absente de la signature" >&2; exit 1; }
+SIGNED_ENT=$(codesign -d --entitlements - "$STAGING" 2>/dev/null)
+echo "$SIGNED_ENT" | grep -q "$BUNDLE_ID-spks" || { echo "✗ exception mach-lookup Sparkle absente de la signature" >&2; exit 1; }
+echo "$SIGNED_ENT" | grep -q "$BUNDLE_ID-spki" || { echo "✗ exception mach-lookup Sparkle (installateur) absente de la signature" >&2; exit 1; }
+if [ -n "${PROVISIONING_PROFILE:-}" ]; then
+  echo "$SIGNED_ENT" | grep -q "com.apple.application-identifier" || { echo "✗ application-identifier absent de la signature : iCloud sera refusé au lancement" >&2; exit 1; }
+fi
 codesign --verify --strict --deep "$STAGING"
 
 # 4. DMG avec mise en page Finder
