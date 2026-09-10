@@ -8,6 +8,15 @@ First release. Scan a room with the iPhone's LiDAR (Apple RoomPlan) and get a di
 - Viewer: 3D orbit, 2D top-down, AR placement of a scale model (1:20, 1:50) or 1:1 overlay.
 - Measurements: area, perimeter, ceiling height, every wall, door, window and detected object.
 
+## Whole house (multi-room)
+- Capture several adjoining rooms in one session on the iPhone: the AR session is kept between rooms, so every room shares one world reference.
+- Rooms are grouped into stories automatically by floor height; the library has a Rooms section and a Houses section on both platforms.
+- House area is the union of the rooms of a story (overlaps counted once), stories added together.
+- Room names are composed from every RoomPlan section of the capture ("Dining room / Kitchen").
+- 2D plan: one PDF page per story, stacked PNG, a floor tint per room.
+- 3D viewer: pick the story to display.
+- Houses are stored as a self-contained `.housescan` package and sync through iCloud Drive like rooms.
+
 ## Mac (macOS 15)
 - Sidebar library, 2D plan, 3D viewer, measurements — the same engine as the iPhone.
 - File › Export (⌘E, per-format submenu), Print (⌘P), Reveal in Finder, drag the plan into another app, Open With…, double-click `.roomscan`.
