@@ -6,8 +6,16 @@ A **Mac companion app** (same codebase) shows the plans, 3D models and measureme
 exports, prints and drag-and-drops them into your Mac tools. **iCloud Drive** keeps iPhone and Mac in sync
 and exposes a "3D Scanner" folder in Files and Finder that any 2D/3D app can read.
 
-> Status: **design validated, implementation in progress** (2026-09-05). Landing page: https://vincentlauriat.github.io/3DScanner/
+> Status: **v1.0.0 released** (2026-09-10) — [download the Mac app](https://github.com/vincentlauriat/3DScanner/releases/latest) (signed, notarized DMG, auto-updates with Sparkle). Landing page: https://vincentlauriat.github.io/3DScanner/
 > See [`docs/superpowers/specs/2026-09-05-3dscanner-design.md`](docs/superpowers/specs/2026-09-05-3dscanner-design.md) for the full specification (French).
+
+## Install (Mac)
+
+Download `3DScanner-1.0.0.dmg` from the [latest release](https://github.com/vincentlauriat/3DScanner/releases/latest),
+open it and drag **3D Scanner** to Applications. The DMG is signed with a Developer ID certificate and
+notarized by Apple, so it opens without a Gatekeeper warning. The app updates itself with Sparkle.
+
+The iPhone app is not distributed on the App Store — build and run it from Xcode (⌘R).
 
 ## Requirements
 
@@ -35,7 +43,7 @@ unit-tested on the simulator from JSON fixtures; the scan screen is tested on de
 | Room library, rename, delete, re-export without rescanning | ✅ built | `.roomscan` packages |
 | **iCloud Drive sync** iPhone ↔ Mac, "3D Scanner" folder in Files & Finder, "Save to iCloud Drive" for exports, offline fallback, conflict-safe | ✅ built (device validation pending) | ubiquity container, `NSMetadataQuery`, `NSFileCoordinator` |
 | **Mac companion app**: sidebar library, 2D plan, 3D viewer (mouse/trackpad orbit), measurements, File › Export (⌘E), Print (⌘P), drag & drop to other apps, Open With…, Reveal in Finder, double-click `.roomscan` | ✅ built (visual check pending) | shared codebase, `RoomScannerMac` target |
-| **Sparkle auto-update** on Mac (signed DMG, notarized) | ✅ integrated · first release pending | `appcast.xml` on `main` |
+| **Sparkle auto-update** on Mac (signed DMG, notarized) | ✅ shipped in v1.0.0 | `appcast.xml` on `main` |
 | French / English UI | ✅ built | |
 | Whole-house merge (multi-room, multi-story) | 🚧 v2 | "Scan a house" mode (shared `ARSession`, RoomPlan `StructureBuilder`), `.housescan` package, house library, level picker (2D / 3D / measures), one PDF page per level, per-room floor tints — validated on a real 3-room house; floor area is the union of the rooms, rooms named from every RoomPlan section |
 | glTF / GLB export | 🔜 v2 | Model I/O cannot write glTF; custom writer |
@@ -81,7 +89,7 @@ See [`ARCHITECTURE_EN.md`](ARCHITECTURE_EN.md) (English, source of truth) / [`AR
 - [x] Phase 7 — iCloud Drive sync (`.roomscan` packages, Exports folder, offline fallback, conflicts)
 - [x] Phase 8 — Mac companion app (split view, menus, print, drag & drop, Open With)
 - [x] Phase 9 — Library, ZIP, settings, icons, localization, Sparkle integration
-- [ ] Phase 10 — v1.0.0 release (iOS + notarized Mac DMG with Sparkle appcast) — release script and Sparkle key ready, publication pending
+- [x] Phase 10 — [v1.0.0 release](https://github.com/vincentlauriat/3DScanner/releases/tag/v1.0.0) (notarized Mac DMG with Sparkle appcast)
 - [ ] v2 — whole-house merge ([spec](docs/superpowers/specs/2026-09-05-3dscanner-v2-house-design.md)): domain ✅, `.housescan` storage + library ✅, multi-room capture ✅ (validated on a real house), house area & naming ✅, remaining: `.housescan` iCloud conflicts, per-level SVG/DXF layers, house AR at 1:100, glTF, compass, imperial units
 
 ## License
