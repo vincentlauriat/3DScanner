@@ -61,6 +61,29 @@ if [ -f "$ROOT/appcast.xml" ]; then
   fi
 fi
 
+# 1c. Profil de provisionnement — vérifié AVANT le build : inutile de construire puis d'échouer.
+# L'app est inutilisable sans iCloud (synchro iPhone ↔ Mac) : le profil est un prérequis,
+# pas une option. Repli automatique sur la sauvegarde, échec explicite sinon.
+# ALLOW_NO_ICLOUD=1 force un build sans profil (essai local uniquement).
+: "${PROVISIONING_PROFILE:=$HOME/.provisioning/RoomScanner_DeveloperID.provisionprofile}"
+if [ ! -r "$PROVISIONING_PROFILE" ]; then
+  if [ "${ALLOW_NO_ICLOUD:-0}" = "1" ]; then
+    echo "⚠︎ ALLOW_NO_ICLOUD=1 : build sans profil, iCloud Drive sera refusé au lancement (repli local)."
+    PROVISIONING_PROFILE=""
+  else
+    echo "✗ Profil de provisionnement Developer ID introuvable : $PROVISIONING_PROFILE" >&2
+    echo "  Sans lui, l'entitlement iCloud est ignoré et l'app se replie SILENCIEUSEMENT sur le stockage local." >&2
+    echo "  Le régénérer avec Xcode (aucun passage par le portail Apple) :" >&2
+    echo "    xcodebuild archive -project RoomScanner.xcodeproj -scheme RoomScannerMac -configuration Release \\" >&2
+    echo "      -destination 'platform=macOS' -archivePath /tmp/rs.xcarchive -allowProvisioningUpdates" >&2
+    echo "    xcodebuild -exportArchive -archivePath /tmp/rs.xcarchive -exportPath /tmp/rs-export \\" >&2
+    echo "      -exportOptionsPlist <plist method=developer-id, signingStyle=automatic> -allowProvisioningUpdates" >&2
+    echo "    cp '/tmp/rs-export/3DScanner.app/Contents/embedded.provisionprofile' \"$PROVISIONING_PROFILE\"" >&2
+    echo "  Ou, pour un essai local sans iCloud : ALLOW_NO_ICLOUD=1 $0 $VERSION" >&2
+    exit 1
+  fi
+fi
+
 # 2. Projet + build Release (signature manuelle ensuite, cf. xattrs com.apple.provenance)
 command -v xcodegen >/dev/null || { echo "✗ xcodegen manquant (brew install xcodegen)" >&2; exit 1; }
 echo "→ xcodegen generate"; xcodegen generate >/dev/null
@@ -74,11 +97,9 @@ APP="$ROOT/build/Build/Products/Release/$APP_NAME.app"
 STAGING_DIR="$(mktemp -d)"; STAGING="$STAGING_DIR/$APP_NAME.app"
 echo "→ Staging $STAGING_DIR"
 ditto --norsrc --noextattr --noacl "$APP" "$STAGING"
-if [ -n "${PROVISIONING_PROFILE:-}" ]; then
-  echo "→ Profil de provisionnement embarqué"
+if [ -n "$PROVISIONING_PROFILE" ]; then
+  echo "→ Profil de provisionnement embarqué ($PROVISIONING_PROFILE)"
   cp "$PROVISIONING_PROFILE" "$STAGING/Contents/embedded.provisionprofile"
-else
-  echo "⚠︎ Pas de PROVISIONING_PROFILE : iCloud Drive sera indisponible dans ce build (repli local)."
 fi
 
 codesign_ts() { # signature avec horodatage, 5 essais (timestamp.apple.com est capricieux)
